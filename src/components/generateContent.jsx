@@ -1,0 +1,208 @@
+import { useState } from "react";
+import { Upload, FileText, X, MessageCircle, Send } from "lucide-react";
+import Header from "./layout/Header";
+
+export default function ContentGenerationPage() {
+  const [files, setFiles] = useState([]);
+  const [messages, setMessages] = useState([
+    {
+      id: 1,
+      type: "ai",
+      text: "База знаний загружена. Чем я могу помочь с генерацией контента?",
+    },
+  ]);
+  const [inputMessage, setInputMessage] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Загрузка файлов
+  const handleFileUpload = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    setIsUploading(true);
+
+    // Имитация загрузки
+    setTimeout(() => {
+      setFiles((prev) => [...prev, ...selectedFiles]);
+      setIsUploading(false);
+    }, 800);
+  };
+
+  // Удаление файла
+  const removeFile = (index) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Отправка сообщения в чат
+  const sendMessage = () => {
+    if (!inputMessage.trim()) return;
+
+    const userMessage = {
+      id: Date.now(),
+      type: "user",
+      text: inputMessage.trim(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInputMessage("");
+
+    setTimeout(() => {
+      const aiReply = {
+        id: Date.now() + 1,
+        type: "ai",
+        text: "Контент сгенерирован на основе загруженных файлов. Вот результат...",
+      };
+      setMessages((prev) => [...prev, aiReply]);
+    }, 900);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") sendMessage();
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      <Header />
+
+      <div className="pt-24 lg:pt-28 px-6 lg:px-12 max-w-screen-2xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Левая колонка — Только загрузка файлов */}
+          <div className="lg:col-span-4">
+            <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 h-full">
+              <h2 className="text-xl font-semibold mb-6 flex items-center gap-3">
+                <Upload className="w-6 h-6 text-red-400" />
+                Загрузка файлов в базу знаний
+              </h2>
+
+              {/* Область загрузки */}
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-700 hover:border-red-500/50 rounded-2xl py-16 cursor-pointer transition-colors">
+                <Upload className="w-12 h-12 text-neutral-500 mb-4" />
+                <p className="text-neutral-400 text-center">
+                  Перетащите файлы сюда
+                  <br />
+                  или нажмите для выбора
+                </p>
+                <p className="text-xs text-neutral-500 mt-2">
+                  PDF, DOCX, TXT, JPG, PNG
+                </p>
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+
+              {/* Список загруженных файлов */}
+              {files.length > 0 && (
+                <div className="mt-8">
+                  <p className="text-sm text-neutral-400 mb-4">
+                    Загруженные файлы:
+                  </p>
+                  <div className="space-y-3">
+                    {files.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between bg-[#0f0f0f] border border-neutral-800 rounded-2xl px-5 py-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-red-400" />
+                          <div>
+                            <p className="text-sm truncate max-w-[220px]">
+                              {file.name}
+                            </p>
+                            <p className="text-xs text-neutral-500">
+                              {(file.size / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="text-neutral-400 hover:text-red-500 transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Кнопка теперь только "Загрузить файл" */}
+              <button
+                onClick={() =>
+                  document.querySelector('input[type="file"]').click()
+                }
+                disabled={isUploading}
+                className="mt-8 w-full py-4 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed rounded-2xl font-medium transition-all active:scale-[0.985]"
+              >
+                {isUploading ? "Загружаем..." : "Загрузить файл"}
+              </button>
+            </div>
+          </div>
+
+          {/* Правая колонка — Чат "Генерация контента по базе знаний" */}
+          <div className="lg:col-span-8">
+            <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl h-full flex flex-col overflow-hidden min-h-[620px]">
+              {/* Шапка чата */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-800 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-red-500/10 rounded-2xl flex items-center justify-center">
+                    <MessageCircle className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <div className="font-semibold">
+                      Генерация контента по базе знаний
+                    </div>
+                    <div className="text-xs text-neutral-500">
+                      AI готов к работе
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Сообщения чата */}
+              <div className="flex-1 p-6 overflow-y-auto space-y-6 text-sm">
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-5 py-3 ${
+                        msg.type === "user"
+                          ? "bg-red-600 text-white"
+                          : "bg-neutral-800/70 text-neutral-200"
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Поле ввода чата */}
+              <div className="p-4 border-t border-neutral-800 shrink-0">
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Опишите, какой контент нужно сгенерировать..."
+                    className="flex-1 bg-[#0f0f0f] border border-neutral-700 focus:border-red-500 rounded-2xl px-5 py-3 text-white placeholder:text-neutral-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={!inputMessage.trim()}
+                    className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 w-12 h-12 rounded-2xl flex items-center justify-center transition-colors"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
