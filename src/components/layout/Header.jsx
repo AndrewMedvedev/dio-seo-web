@@ -28,24 +28,26 @@ const Header = () => {
         <div className="ml-auto min-w-0 max-w-full flex items-center gap-2 sm:gap-4 lg:gap-8 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-1.5 sm:p-2">
           <Link
             to="/generate/content"
-            className={`px-3 sm:px-5 lg:px-9 py-2.5 sm:py-3.5 rounded-2xl text-sm sm:text-base font-medium transition-all whitespace-nowrap ${
+            className={`px-3 sm:px-5 lg:px-9 py-2.5 sm:py-3.5 rounded-2xl text-sm sm:text-base font-medium transition-all whitespace-nowrap min-w-0 ${
               isContentGen
                 ? "bg-neutral-800 text-white shadow-sm"
                 : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
             }`}
           >
-            Генерация контента
+            <span className="sm:hidden">Контент</span>
+            <span className="hidden sm:inline">Генерация контента</span>
           </Link>
 
           <Link
             to="/seo"
-            className={`px-3 sm:px-5 lg:px-9 py-2.5 sm:py-3.5 rounded-2xl text-sm sm:text-base font-medium transition-all whitespace-nowrap ${
+            className={`px-3 sm:px-5 lg:px-9 py-2.5 sm:py-3.5 rounded-2xl text-sm sm:text-base font-medium transition-all whitespace-nowrap min-w-0 ${
               isPromotion
                 ? "bg-neutral-800 text-white shadow-sm"
                 : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
             }`}
           >
-            Продвижение сайта
+            <span className="sm:hidden">SEO</span>
+            <span className="hidden sm:inline">Продвижение сайта</span>
           </Link>
         </div>
 

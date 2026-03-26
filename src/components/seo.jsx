@@ -383,24 +383,24 @@ export default function PromotionPage() {
                   <p className="text-neutral-400 text-sm mb-4">
                     Введите URL сайта для анализа
                   </p>
-                  <div className="flex gap-4">
+                  <div className="flex gap-4 max-[1024px]:flex-wrap">
                     <input
                       type="url"
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
                       placeholder="https://example.com"
-                      className="flex-1 bg-[#0f0f0f] border border-neutral-700 focus:border-red-500 rounded-2xl px-6 py-4 text-white placeholder:text-neutral-500 focus:outline-none transition-all"
+                      className="flex-1 min-w-0 bg-[#0f0f0f] border border-neutral-700 focus:border-red-500 rounded-2xl px-6 py-4 text-white placeholder:text-neutral-500 focus:outline-none transition-all max-[1024px]:basis-full"
                     />
                     <button
                       onClick={handleAnalyze}
                       disabled={!url.trim() || loading}
-                      className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed px-10 rounded-2xl font-medium transition-colors whitespace-nowrap"
+                      className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed px-10 py-4 rounded-2xl font-medium transition-colors whitespace-nowrap max-[1024px]:w-full"
                     >
                       {loading ? "Анализируем..." : "Анализировать"}
                     </button>
                     <button
                       onClick={toggleHistory}
-                      className="px-6 rounded-2xl font-medium border border-neutral-700 hover:border-red-500/50 hover:text-white text-neutral-200 transition-colors whitespace-nowrap flex items-center gap-2"
+                      className="px-6 py-4 rounded-2xl font-medium border border-neutral-700 hover:border-red-500/50 hover:text-white text-neutral-200 transition-colors whitespace-nowrap flex items-center justify-center gap-2 max-[1024px]:w-full"
                     >
                       <History className="w-4 h-4" />
                       Посмотреть историю
@@ -412,7 +412,7 @@ export default function PromotionPage() {
               {showHistory && (
                 <div className="flex items-center justify-between gap-4">
                   <p className="text-neutral-400 text-sm">
-                    В режиме истории доступны прошлые генерации контента.
+                    В режиме истории доступны прошлые генерации контента
                   </p>
                   <button
                     onClick={toggleHistory}
@@ -432,7 +432,6 @@ export default function PromotionPage() {
                     <h2 className="text-2xl font-bold flex items-center gap-3">
                       <History className="text-red-400" /> История генераций
                     </h2>
-                    <span className="text-sm text-neutral-500">Моковые данные</span>
                   </div>
 
                   {MOCK_CONTENT_HISTORY.map((historyItem) => (
