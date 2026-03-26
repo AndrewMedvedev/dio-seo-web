@@ -378,7 +378,7 @@ export default function PromotionPage() {
           <div className="flex-1 flex flex-col gap-6">
             {/* Ввод URL / Переключение истории */}
             <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 shrink-0">
-              {!showHistory && (
+                {!showHistory && (
                 <>
                   <p className="text-neutral-400 text-sm mb-4">
                     Введите URL сайта для анализа
@@ -432,6 +432,7 @@ export default function PromotionPage() {
                     <h2 className="text-2xl font-bold flex items-center gap-3">
                       <History className="text-red-400" /> История генераций
                     </h2>
+                    <span className="text-sm text-neutral-500">Моковые данные</span>
                   </div>
 
                   {MOCK_CONTENT_HISTORY.map((historyItem) => (

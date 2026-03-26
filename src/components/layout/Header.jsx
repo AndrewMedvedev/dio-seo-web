@@ -11,7 +11,7 @@ const Header = () => {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-10 bg-[#0f0f0f]/95 backdrop-blur-md border-b border-neutral-800/50">
-      <div className="flex h-20 lg:h-24 items-center px-6 lg:px-12 max-w-screen-2xl mx-auto">
+      <div className="flex h-20 lg:h-24 items-center gap-3 px-4 sm:px-6 lg:px-12 max-w-screen-2xl mx-auto">
         {/* Логотип слева */}
         <Link to="/" className="flex items-center gap-3 flex-shrink-0">
           <img
@@ -24,14 +24,11 @@ const Header = () => {
           </span>
         </Link>
 
-        {/* Пространство, толкающее кнопки вправо */}
-        <div className="flex-1" />
-
-        {/* Кнопки с увеличенным расстоянием */}
-        <div className="flex items-center gap-12 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-2">
+        {/* Кнопки навигации — остаются внутри хедера даже при сильном зуме */}
+        <div className="ml-auto min-w-0 max-w-full flex items-center gap-2 sm:gap-4 lg:gap-8 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-1.5 sm:p-2">
           <Link
             to="/generate/content"
-            className={`px-9 py-3.5 rounded-2xl text-base font-medium transition-all ${
+            className={`px-3 sm:px-5 lg:px-9 py-2.5 sm:py-3.5 rounded-2xl text-sm sm:text-base font-medium transition-all whitespace-nowrap ${
               isContentGen
                 ? "bg-neutral-800 text-white shadow-sm"
                 : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
@@ -42,7 +39,7 @@ const Header = () => {
 
           <Link
             to="/seo"
-            className={`px-9 py-3.5 rounded-2xl text-base font-medium transition-all ${
+            className={`px-3 sm:px-5 lg:px-9 py-2.5 sm:py-3.5 rounded-2xl text-sm sm:text-base font-medium transition-all whitespace-nowrap ${
               isPromotion
                 ? "bg-neutral-800 text-white shadow-sm"
                 : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
@@ -52,8 +49,6 @@ const Header = () => {
           </Link>
         </div>
 
-        {/* Небольшой отступ справа */}
-        <div className="w-6 lg:w-12 flex-shrink-0" />
       </div>
     </header>
   );
