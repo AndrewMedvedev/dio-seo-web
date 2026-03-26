@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Upload, FileText, X, MessageCircle, Send } from "lucide-react";
+import { Upload, FileText, X, MessageCircle } from "lucide-react";
 import Header from "./layout/Header";
+import ChatMessageList from "./ChatMessageList";
+import ChatInputBox from "./ChatInputBox";
 
 const MOCK_UPLOADED_HISTORY = [
   {
@@ -261,49 +263,28 @@ export default function ContentGenerationPage() {
               </div>
 
               {/* Сообщения чата */}
-              <div className="flex-1 p-6 overflow-y-auto space-y-6 text-sm">
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-5 py-3 ${
-                        msg.type === "user"
-                          ? "bg-red-600 text-white"
-                          : "bg-neutral-800/70 text-neutral-200"
-                      }`}
-                    >
-                      <p>{msg.text}</p>
-                      {msg.sources?.length > 0 && (
-                        <p className="text-xs text-neutral-400 mt-2">
-                          Источники: {msg.sources.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <ChatMessageList
+                messages={messages}
+                className="flex-1 p-6 overflow-y-auto space-y-6 text-sm"
+                renderMeta={(msg) =>
+                  msg.sources?.length > 0 ? (
+                    <p className="text-xs text-neutral-400 mt-2">
+                      Источники: {msg.sources.join(", ")}
+                    </p>
+                  ) : null
+                }
+              />
 
               {/* Поле ввода чата */}
               <div className="p-4 border-t border-neutral-800 shrink-0">
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Опишите, какой контент нужно сгенерировать..."
-                    className="flex-1 bg-[#0f0f0f] border border-neutral-700 focus:border-red-500 rounded-2xl px-5 py-3 text-white placeholder:text-neutral-500 focus:outline-none"
-                  />
-                  <button
-                    onClick={sendMessage}
-                    disabled={!inputMessage.trim()}
-                    className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 w-12 h-12 rounded-2xl flex items-center justify-center transition-colors"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
+                <ChatInputBox
+                  value={inputMessage}
+                  onChange={setInputMessage}
+                  onKeyDown={handleKeyPress}
+                  onSend={sendMessage}
+                  placeholder="Опишите, какой контент нужно сгенерировать..."
+                  disabled={!inputMessage.trim()}
+                />
               </div>
             </div>
           </div>

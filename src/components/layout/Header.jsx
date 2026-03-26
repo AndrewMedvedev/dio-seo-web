@@ -34,7 +34,7 @@ const Header = () => {
                 : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
             }`}
           >
-            <span className="sm:hidden">Контент</span>
+            <span className="sm:hidden">Генерация контента</span>
             <span className="hidden sm:inline">Генерация контента</span>
           </Link>
 
@@ -46,7 +46,7 @@ const Header = () => {
                 : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
             }`}
           >
-            <span className="sm:hidden">SEO</span>
+            <span className="sm:hidden">Продвижение сайта</span>
             <span className="hidden sm:inline">Продвижение сайта</span>
           </Link>
         </div>

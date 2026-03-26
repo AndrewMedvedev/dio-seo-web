@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import {
   X,
   MessageCircle,
-  Send,
   TrendingUp,
   AlertTriangle,
   CheckCircle,
@@ -10,6 +9,9 @@ import {
   History,
 } from "lucide-react";
 import Header from "./layout/Header";
+import ChatMessageList from "./ChatMessageList";
+import ChatInputBox from "./ChatInputBox";
+import InfoSection from "./InfoSection";
 
 const MOCK_CONTENT_HISTORY = [
   {
@@ -655,25 +657,13 @@ export default function PromotionPage() {
                     </p>
                   </div>
 
-                  {/* Анализ структуры */}
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">
-                      Анализ структуры сайта
-                    </h3>
-                    <div className="bg-[#0f0f0f] border border-neutral-800 rounded-3xl p-8 text-neutral-300 leading-relaxed">
-                      {content.seo_result.sitemap_analysis}
-                    </div>
-                  </div>
+                  <InfoSection title="Анализ структуры сайта">
+                    {content.seo_result.sitemap_analysis}
+                  </InfoSection>
 
-                  {/* Анализ контента */}
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">
-                      Анализ контента
-                    </h3>
-                    <div className="bg-[#0f0f0f] border border-neutral-800 rounded-3xl p-8 text-neutral-300 leading-relaxed">
-                      {content.seo_result.content_analysis}
-                    </div>
-                  </div>
+                  <InfoSection title="Анализ контента">
+                    {content.seo_result.content_analysis}
+                  </InfoSection>
 
                   {/* Core Web Vitals */}
                   <div>
@@ -717,45 +707,33 @@ export default function PromotionPage() {
                     </div>
                   </div>
 
-                  {/* Специализация компании */}
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">
-                      Специализация компании
-                    </h3>
-                    <div className="bg-[#0f0f0f] border border-neutral-800 rounded-3xl p-8 text-neutral-200 leading-relaxed">
-                      {content.analyst_result.specialization.specialization}
-                    </div>
-                  </div>
+                  <InfoSection
+                    title="Специализация компании"
+                    containerClassName="text-neutral-200"
+                  >
+                    {content.analyst_result.specialization.specialization}
+                  </InfoSection>
 
-                  {/* Основная область экспертизы */}
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">
-                      Основная область экспертизы
-                    </h3>
-                    <div className="bg-[#0f0f0f] border border-neutral-800 rounded-3xl p-8 text-neutral-200 leading-relaxed">
-                      {content.analyst_result.expertise.main_area}
-                    </div>
-                  </div>
+                  <InfoSection
+                    title="Основная область экспертизы"
+                    containerClassName="text-neutral-200"
+                  >
+                    {content.analyst_result.expertise.main_area}
+                  </InfoSection>
 
-                  {/* Ключевые проблемы клиентов */}
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">
-                      Ключевые проблемы клиентов
-                    </h3>
-                    <div className="bg-[#0f0f0f] border border-neutral-800 rounded-3xl p-8 text-neutral-300">
-                      {content.analyst_result.expertise.key_user_problem}
-                    </div>
-                  </div>
+                  <InfoSection
+                    title="Ключевые проблемы клиентов"
+                    containerClassName="text-neutral-300"
+                  >
+                    {content.analyst_result.expertise.key_user_problem}
+                  </InfoSection>
 
-                  {/* Преимущества для клиента */}
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">
-                      Преимущества для клиента
-                    </h3>
-                    <div className="bg-[#0f0f0f] border border-neutral-800 rounded-3xl p-8 text-neutral-300">
-                      {content.analyst_result.expertise.benefit_to_the_user}
-                    </div>
-                  </div>
+                  <InfoSection
+                    title="Преимущества для клиента"
+                    containerClassName="text-neutral-300"
+                  >
+                    {content.analyst_result.expertise.benefit_to_the_user}
+                  </InfoSection>
 
                   {/* Семантическое ядро */}
                   <div>
@@ -996,39 +974,20 @@ export default function PromotionPage() {
                       </button>
                     </div>
 
-                    <div className="flex-1 p-6 overflow-y-auto space-y-6 text-sm">
-                      {messages.map((msg) => (
-                        <div
-                          key={msg.id}
-                          className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
-                        >
-                          <div
-                            className={`max-w-[85%] rounded-2xl px-5 py-3 ${msg.type === "user" ? "bg-red-600 text-white" : "bg-neutral-800/70 text-neutral-200"}`}
-                          >
-                            {msg.text}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <ChatMessageList
+                      messages={messages}
+                      className="flex-1 p-6 overflow-y-auto space-y-6 text-sm"
+                    />
 
                     <div className="p-4 border-t border-neutral-800 shrink-0">
-                      <div className="flex gap-3">
-                        <input
-                          type="text"
-                          value={inputMessage}
-                          onChange={(e) => setInputMessage(e.target.value)}
-                          onKeyPress={handleKeyPress}
-                          placeholder="Напишите сообщение..."
-                          className="flex-1 bg-[#0f0f0f] border border-neutral-700 focus:border-red-500 rounded-2xl px-5 py-3 text-white placeholder:text-neutral-500 focus:outline-none"
-                        />
-                        <button
-                          onClick={sendMessage}
-                          disabled={!inputMessage.trim()}
-                          className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 w-12 h-12 rounded-2xl flex items-center justify-center transition-colors"
-                        >
-                          <Send className="w-5 h-5" />
-                        </button>
-                      </div>
+                      <ChatInputBox
+                        value={inputMessage}
+                        onChange={setInputMessage}
+                        onKeyDown={handleKeyPress}
+                        onSend={sendMessage}
+                        placeholder="Напишите сообщение..."
+                        disabled={!inputMessage.trim()}
+                      />
                     </div>
                   </div>
                 ) : (
