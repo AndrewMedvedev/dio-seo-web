@@ -2,27 +2,88 @@ import { useState } from "react";
 import { Upload, FileText, X, MessageCircle, Send } from "lucide-react";
 import Header from "./layout/Header";
 
+const MOCK_UPLOADED_HISTORY = [
+  {
+    id: "kb-1",
+    name: "tone-of-voice-guide.pdf",
+    sizeKb: 284,
+    uploadedAt: "24.03.2026 12:10",
+  },
+  {
+    id: "kb-2",
+    name: "product-faq.docx",
+    sizeKb: 96,
+    uploadedAt: "25.03.2026 09:42",
+  },
+  {
+    id: "kb-3",
+    name: "target-audience-notes.txt",
+    sizeKb: 18,
+    uploadedAt: "25.03.2026 20:05",
+  },
+];
+
+const MOCK_CHAT_MESSAGES = [
+  {
+    id: 1,
+    type: "ai",
+    text: "База знаний подключена. Могу подготовить пост, статью или контент-план.",
+    sources: ["tone-of-voice-guide.pdf", "product-faq.docx"],
+  },
+  {
+    id: 2,
+    type: "user",
+    text: "Сделай короткий пост для Telegram про запуск новой функции.",
+  },
+  {
+    id: 3,
+    type: "ai",
+    text: "Готово! Сделал пост в дружелюбном стиле бренда и добавил акцент на ценность для пользователя.",
+    sources: ["tone-of-voice-guide.pdf"],
+  },
+];
+
+const MOCK_AI_REPLIES = [
+  "Собрал черновик на основе базы знаний. Могу сделать более формальный или более продающий вариант.",
+  "Подготовил текст с учетом FAQ и позиционирования продукта. Если нужно, добавлю CTA.",
+  "Сгенерировал вариант контента и сохранил тональность бренда. Готов адаптировать под нужный канал.",
+];
+
 export default function ContentGenerationPage() {
   const [files, setFiles] = useState([]);
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: "ai",
-      text: "База знаний загружена. Чем я могу помочь с генерацией контента?",
-    },
-  ]);
+  const [historyFiles, setHistoryFiles] = useState(MOCK_UPLOADED_HISTORY);
+  const [messages, setMessages] = useState(MOCK_CHAT_MESSAGES);
   const [inputMessage, setInputMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Загрузка файлов
   const handleFileUpload = (e) => {
     const selectedFiles = Array.from(e.target.files);
+    if (!selectedFiles.length) return;
     setIsUploading(true);
 
     // Имитация загрузки
     setTimeout(() => {
+      const now = new Date();
+      const uploadedAt = now.toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      const newFilesForHistory = selectedFiles.map((file, index) => ({
+        id: `${Date.now()}-${index}`,
+        name: file.name,
+        sizeKb: Number((file.size / 1024).toFixed(1)),
+        uploadedAt,
+      }));
       setFiles((prev) => [...prev, ...selectedFiles]);
+      setHistoryFiles((prev) => [...newFilesForHistory, ...prev]);
       setIsUploading(false);
+      setIsHistoryOpen(true);
     }, 800);
   };
 
@@ -45,10 +106,13 @@ export default function ContentGenerationPage() {
     setInputMessage("");
 
     setTimeout(() => {
+      const randomReply =
+      MOCK_AI_REPLIES[Math.floor(Math.random() * MOCK_AI_REPLIES.length)];
       const aiReply = {
         id: Date.now() + 1,
         type: "ai",
-        text: "Контент сгенерирован на основе загруженных файлов. Вот результат...",
+        text: randomReply,
+        sources: historyFiles.slice(0, 2).map((file) => file.name),
       };
       setMessages((prev) => [...prev, aiReply]);
     }, 900);
@@ -136,6 +200,43 @@ export default function ContentGenerationPage() {
               >
                 {isUploading ? "Загружаем..." : "Загрузить файл"}
               </button>
+
+              <button
+                onClick={() => setIsHistoryOpen((prev) => !prev)}
+                className="mt-3 w-full py-3 bg-[#131313] hover:bg-[#171717] border border-neutral-700 rounded-2xl text-sm font-medium transition-colors"
+              >
+                {isHistoryOpen
+                  ? "Скрыть загруженные файлы"
+                  : "Посмотреть загруженные файлы"}
+              </button>
+
+              <div
+                className={`transition-all duration-300 overflow-hidden ${
+                  isHistoryOpen ? "max-h-[340px] opacity-100 mt-4" : "max-h-0 opacity-0"
+                }`}
+              >
+                <div className="bg-[#0f0f0f] border border-neutral-800 rounded-2xl overflow-hidden">
+                  <div className="p-4 space-y-3 overflow-y-auto max-h-[320px] pr-2">
+                    {historyFiles.length === 0 ? (
+                      <p className="text-sm text-neutral-500">
+                        История пока пустая
+                      </p>
+                    ) : (
+                      historyFiles.map((file) => (
+                        <div
+                          key={file.id}
+                          className="border border-neutral-800 rounded-xl px-3 py-2"
+                        >
+                          <p className="text-sm truncate">{file.name}</p>
+                          <p className="text-xs text-neutral-500 mt-1">
+                            {file.sizeKb} KB • {file.uploadedAt}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -173,7 +274,12 @@ export default function ContentGenerationPage() {
                           : "bg-neutral-800/70 text-neutral-200"
                       }`}
                     >
-                      {msg.text}
+                      <p>{msg.text}</p>
+                      {msg.sources?.length > 0 && (
+                        <p className="text-xs text-neutral-400 mt-2">
+                          Источники: {msg.sources.join(", ")}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
