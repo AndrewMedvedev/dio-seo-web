@@ -7,8 +7,53 @@ import {
   AlertTriangle,
   CheckCircle,
   DollarSign,
+  History,
 } from "lucide-react";
 import Header from "./layout/Header";
+
+const MOCK_CONTENT_HISTORY = [
+  {
+    id: "hist-1",
+    title: "Генерация для diocon.ru",
+    createdAt: "26.03.2026, 14:22",
+    status: "Готово",
+    messages: [
+      {
+        id: "h1-m1",
+        role: "user",
+        text: "Подготовь SEO-текст для страницы услуг по автоматизации 1С.",
+      },
+      {
+        id: "h1-m2",
+        role: "assistant",
+        text: "Сгенерировал структуру с H1, meta title, description и блоком преимуществ компании.",
+      },
+      {
+        id: "h1-m3",
+        role: "assistant",
+        text: "Добавил рекомендации по размещению контента и alt-теги для изображений.",
+      },
+    ],
+  },
+  {
+    id: "hist-2",
+    title: "Генерация для bitrix-проекта",
+    createdAt: "25.03.2026, 18:09",
+    status: "Выполнено",
+    messages: [
+      {
+        id: "h2-m1",
+        role: "user",
+        text: "Нужен вариант контента для главной страницы с акцентом на внедрение 1С ERP.",
+      },
+      {
+        id: "h2-m2",
+        role: "assistant",
+        text: "Готово. Подготовил продающий блок, FAQ и описание кейсов внедрения.",
+      },
+    ],
+  },
+];
 
 export default function PromotionPage() {
   const [url, setUrl] = useState("");
@@ -18,6 +63,7 @@ export default function PromotionPage() {
   const [loading, setLoading] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const [messages, setMessages] = useState([
     {
@@ -311,6 +357,10 @@ export default function PromotionPage() {
   const openChat = () => setChatOpen(true);
   const closeChat = () => setChatOpen(false);
 
+  const toggleHistory = () => {
+    setShowHistory((prev) => !prev);
+  };
+
   // Динамический текст основной кнопки
   const getMainButtonText = () => {
     if (aiGenerating) return "Генерируем AI-контент...";
@@ -326,32 +376,99 @@ export default function PromotionPage() {
         <div className="flex flex-col lg:flex-row gap-8 flex-1">
           {/* Левая колонка */}
           <div className="flex-1 flex flex-col gap-6">
-            {/* Ввод URL */}
+            {/* Ввод URL / Переключение истории */}
             <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 shrink-0">
-              <p className="text-neutral-400 text-sm mb-4">
-                Введите URL сайта для анализа
-              </p>
-              <div className="flex gap-4">
-                <input
-                  type="url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://example.com"
-                  className="flex-1 bg-[#0f0f0f] border border-neutral-700 focus:border-red-500 rounded-2xl px-6 py-4 text-white placeholder:text-neutral-500 focus:outline-none transition-all"
-                />
-                <button
-                  onClick={handleAnalyze}
-                  disabled={!url.trim() || loading}
-                  className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed px-10 rounded-2xl font-medium transition-colors whitespace-nowrap"
-                >
-                  {loading ? "Анализируем..." : "Анализировать"}
-                </button>
-              </div>
+              {!showHistory && (
+                <>
+                  <p className="text-neutral-400 text-sm mb-4">
+                    Введите URL сайта для анализа
+                  </p>
+                  <div className="flex gap-4">
+                    <input
+                      type="url"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="https://example.com"
+                      className="flex-1 bg-[#0f0f0f] border border-neutral-700 focus:border-red-500 rounded-2xl px-6 py-4 text-white placeholder:text-neutral-500 focus:outline-none transition-all"
+                    />
+                    <button
+                      onClick={handleAnalyze}
+                      disabled={!url.trim() || loading}
+                      className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed px-10 rounded-2xl font-medium transition-colors whitespace-nowrap"
+                    >
+                      {loading ? "Анализируем..." : "Анализировать"}
+                    </button>
+                    <button
+                      onClick={toggleHistory}
+                      className="px-6 rounded-2xl font-medium border border-neutral-700 hover:border-red-500/50 hover:text-white text-neutral-200 transition-colors whitespace-nowrap flex items-center gap-2"
+                    >
+                      <History className="w-4 h-4" />
+                      Посмотреть историю
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {showHistory && (
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-neutral-400 text-sm">
+                    В режиме истории доступны прошлые генерации контента.
+                  </p>
+                  <button
+                    onClick={toggleHistory}
+                    className="px-6 py-3 rounded-2xl font-medium border border-neutral-700 hover:border-red-500/50 hover:text-white text-neutral-200 transition-colors whitespace-nowrap"
+                  >
+                    Вернуться к анализу
+                  </button>
+                </div>
+              )}              
             </div>
 
             {/* Основной контент */}
             <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 lg:p-10 overflow-auto">
-              {!content ? (
+              {showHistory ? (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold flex items-center gap-3">
+                      <History className="text-red-400" /> История генераций
+                    </h2>
+                  </div>
+
+                  {MOCK_CONTENT_HISTORY.map((historyItem) => (
+                    <div
+                      key={historyItem.id}
+                      className="bg-[#0f0f0f] border border-neutral-800 rounded-3xl p-6 space-y-5"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <div className="font-semibold text-lg">{historyItem.title}</div>
+                          <div className="text-sm text-neutral-500 mt-1">
+                            {historyItem.createdAt}
+                          </div>
+                        </div>
+                        <div className="text-xs px-3 py-1.5 rounded-2xl border border-emerald-500/30 text-emerald-300 bg-emerald-500/10">
+                          {historyItem.status}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        {historyItem.messages.map((message) => (
+                          <div
+                            key={message.id}
+                            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[85%] rounded-2xl px-5 py-3 text-sm ${message.role === "user" ? "bg-red-600 text-white" : "bg-neutral-800 text-neutral-200"}`}
+                            >
+                              {message.text}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : !content ? (
                 <div className="h-full flex items-center justify-center text-neutral-500 text-center">
                   После анализа сайта здесь появится детальный отчёт с графиками
                 </div>
