@@ -3,8 +3,8 @@ import Registration from "./auth/registration";
 import Login from "./auth/login";
 import Invitation from "./auth/invitations";
 import Header from "./components/layout/Header";
-import PromotionPage from "./components/seo";
-import ContentGenerationPage from "./components/generateContent";
+import ContentGenerationPage from "./pages/GenerateContent";
+import PromotionPage from "./pages/PromotionPage";
 const App = () => {
   return (
     <>
@@ -14,7 +14,7 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/registration" element={<Registration />} />
         <Route path="/seo" element={<PromotionPage />} />
-        <Route path="//generate/content" element={<ContentGenerationPage />} />
+        <Route path="/generate/content" element={<ContentGenerationPage />} />
       </Routes>
     </>
   );

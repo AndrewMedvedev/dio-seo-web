@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Upload, FileText, X, MessageCircle } from "lucide-react";
-import Header from "./layout/Header";
-import ChatMessageList from "./ChatMessageList";
-import ChatInputBox from "./ChatInputBox";
+import Header from "../components/layout/Header";
+import ChatMessageList from "../components/ChatMessageList";
+import ChatInputBox from "../components/ChatInputBox";
 
 const MOCK_UPLOADED_HISTORY = [
   {
@@ -109,7 +109,7 @@ export default function ContentGenerationPage() {
 
     setTimeout(() => {
       const randomReply =
-      MOCK_AI_REPLIES[Math.floor(Math.random() * MOCK_AI_REPLIES.length)];
+        MOCK_AI_REPLIES[Math.floor(Math.random() * MOCK_AI_REPLIES.length)];
       const aiReply = {
         id: Date.now() + 1,
         type: "ai",
@@ -125,7 +125,7 @@ export default function ContentGenerationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-dark-900 text-white">
       <Header />
 
       <div className="pt-24 lg:pt-28 px-6 lg:px-12 max-w-screen-2xl mx-auto">
@@ -167,12 +167,12 @@ export default function ContentGenerationPage() {
                     {files.map((file, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between bg-[#0f0f0f] border border-neutral-800 rounded-2xl px-5 py-4"
+                        className="flex items-center justify-between bg-dark-800 border border-neutral-800 rounded-2xl px-5 py-4"
                       >
                         <div className="flex items-center gap-3">
                           <FileText className="w-5 h-5 text-red-400" />
                           <div>
-                            <p className="text-sm truncate max-w-[220px]">
+                            <p className="text-sm truncate max-w-55">
                               {file.name}
                             </p>
                             <p className="text-xs text-neutral-500">
@@ -205,7 +205,7 @@ export default function ContentGenerationPage() {
 
               <button
                 onClick={() => setIsHistoryOpen((prev) => !prev)}
-                className="mt-3 w-full py-3 bg-[#131313] hover:bg-[#171717] border border-neutral-700 rounded-2xl text-sm font-medium transition-colors"
+                className="mt-3 w-full py-3 bg-[#131313] hover:bg-dark-700 border border-neutral-700 rounded-2xl text-sm font-medium transition-colors"
               >
                 {isHistoryOpen
                   ? "Скрыть загруженные файлы"
@@ -214,11 +214,13 @@ export default function ContentGenerationPage() {
 
               <div
                 className={`transition-all duration-300 overflow-hidden ${
-                  isHistoryOpen ? "max-h-[340px] opacity-100 mt-4" : "max-h-0 opacity-0"
+                  isHistoryOpen
+                    ? "max-h-85 opacity-100 mt-4"
+                    : "max-h-0 opacity-0"
                 }`}
               >
-                <div className="bg-[#0f0f0f] border border-neutral-800 rounded-2xl overflow-hidden">
-                  <div className="p-4 space-y-3 overflow-y-auto max-h-[320px] pr-2">
+                <div className="bg-dark-800 border border-neutral-800 rounded-2xl overflow-hidden">
+                  <div className="p-4 space-y-3 overflow-y-auto max-h-80 pr-2">
                     {historyFiles.length === 0 ? (
                       <p className="text-sm text-neutral-500">
                         История пока пустая
@@ -244,7 +246,7 @@ export default function ContentGenerationPage() {
 
           {/* Правая колонка — Чат "Генерация контента по базе знаний" */}
           <div className="lg:col-span-8">
-            <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl h-full flex flex-col overflow-hidden min-h-[620px]">
+            <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl h-full flex flex-col overflow-hidden min-h-155">
               {/* Шапка чата */}
               <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-800 shrink-0">
                 <div className="flex items-center gap-3">
