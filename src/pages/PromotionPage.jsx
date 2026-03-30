@@ -12,24 +12,47 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-
 import Header from "../components/layout/Header";
 import SeoReport from "../components/SeoReport";
 import AioContentView from "../components/AioContentView";
 import { PromotionApi } from "../api/Promotion";
 
 const CHAT_STORAGE_KEY = "promotion_chat_history";
+const PAGE_STORAGE_KEY = "promotion_page_state";
 
 export default function PromotionPage() {
-  const [url, setUrl] = useState("");
-  const [content, setContent] = useState(null);
-  const [aiContent, setAiContent] = useState(null);
-  const [showAiContent, setShowAiContent] = useState(false);
+  // ==================== Основные состояния с сохранением ====================
+  const [url, setUrl] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem(`${PAGE_STORAGE_KEY}_url`) || "";
+  });
+
+  const [content, setContent] = useState(() => {
+    if (typeof window === "undefined") return null;
+    const saved = localStorage.getItem(`${PAGE_STORAGE_KEY}_content`);
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [aiContent, setAiContent] = useState(() => {
+    if (typeof window === "undefined") return null;
+    const saved = localStorage.getItem(`${PAGE_STORAGE_KEY}_aiContent`);
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [showAiContent, setShowAiContent] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(`${PAGE_STORAGE_KEY}_showAiContent`) === "true";
+  });
+
+  const [chatOpen, setChatOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(`${PAGE_STORAGE_KEY}_chatOpen`) === "true";
+  });
+
   const [loading, setLoading] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
 
   // Чат
-  const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [chatHistory, setChatHistory] = useState({});
@@ -38,12 +61,15 @@ export default function PromotionPage() {
 
   const userId = "d9cb70ab-9403-4e62-9f17-225cc00176aa";
 
-  // ==================== Состояния для истории ====================
+  // ==================== История с пагинацией ====================
   const [historyData, setHistoryData] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  // Загрузка истории чата из localStorage
+  // Загрузка истории чата
   useEffect(() => {
     const saved = localStorage.getItem(CHAT_STORAGE_KEY);
     if (saved) {
@@ -55,21 +81,55 @@ export default function PromotionPage() {
     }
   }, []);
 
-  // Сохранение истории чата в localStorage
+  // Сохранение истории чата
   useEffect(() => {
     if (Object.keys(chatHistory).length > 0) {
       localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatHistory));
     }
   }, [chatHistory]);
 
-  // Загрузка сообщений при смене URL
+  // Сохранение основных состояний страницы
+  useEffect(() => {
+    localStorage.setItem(`${PAGE_STORAGE_KEY}_url`, url);
+  }, [url]);
+
+  useEffect(() => {
+    if (content) {
+      localStorage.setItem(
+        `${PAGE_STORAGE_KEY}_content`,
+        JSON.stringify(content),
+      );
+    }
+  }, [content]);
+
+  useEffect(() => {
+    if (aiContent) {
+      localStorage.setItem(
+        `${PAGE_STORAGE_KEY}_aiContent`,
+        JSON.stringify(aiContent),
+      );
+    }
+  }, [aiContent]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      `${PAGE_STORAGE_KEY}_showAiContent`,
+      showAiContent.toString(),
+    );
+  }, [showAiContent]);
+
+  useEffect(() => {
+    localStorage.setItem(`${PAGE_STORAGE_KEY}_chatOpen`, chatOpen.toString());
+  }, [chatOpen]);
+
+  // Загрузка сообщений чата при смене URL
   useEffect(() => {
     if (url.trim()) {
       const savedMessages = chatHistory[url] || [
         {
           id: Date.now(),
           type: "ai",
-          text: `Анализ сайта **${url}** завершён. Чем я могу помочь с продвижением?`,
+          text: `Анализ сайта **${url}** завершён. Чем я могу помочь?`,
         },
       ];
       setMessages(savedMessages);
@@ -79,39 +139,60 @@ export default function PromotionPage() {
   }, [url, chatHistory]);
 
   // ==================== Загрузка истории генераций ====================
-  const fetchHistory = async () => {
+  const fetchHistory = async (page = 1, isLoadMore = false) => {
     if (!userId) return;
-    setHistoryLoading(true);
+    if (isLoadMore) setLoadingMore(true);
+    else setHistoryLoading(true);
+
     setHistoryError(null);
+
     try {
-      const data = await PromotionApi.history(userId, 1, 20); // загружаем первые 20 записей
-      setHistoryData(data.results || data || []);
+      const data = await PromotionApi.history(userId, page, 10);
+      const newItems = data.results || data || [];
+
+      if (isLoadMore) {
+        setHistoryData((prev) => [...prev, ...newItems]);
+      } else {
+        setHistoryData(newItems);
+      }
+
+      setHasMore(newItems.length === 10);
+      setCurrentPage(page);
     } catch (error) {
       console.error("Ошибка загрузки истории:", error);
       setHistoryError("Не удалось загрузить историю генераций");
     } finally {
       setHistoryLoading(false);
+      setLoadingMore(false);
     }
   };
 
-  // Загружаем историю при открытии вкладки "История"
   useEffect(() => {
     if (showHistory) {
-      fetchHistory();
+      setCurrentPage(1);
+      setHistoryData([]);
+      setHasMore(true);
+      fetchHistory(1, false);
     }
   }, [showHistory]);
+
+  const loadMore = () => {
+    const nextPage = currentPage + 1;
+    fetchHistory(nextPage, true);
+  };
 
   // ==================== Анализ сайта ====================
   const handleAnalyze = async () => {
     if (!url.trim() || !userId) return;
+
     setLoading(true);
     setContent(null);
     setAiContent(null);
     setShowAiContent(false);
     setChatOpen(false);
+
     try {
       const data = await PromotionApi.seo(userId, url.trim());
-      console.log(data);
       setContent(data);
     } catch (error) {
       console.error("Ошибка анализа SEO:", error);
@@ -124,10 +205,10 @@ export default function PromotionPage() {
   // ==================== Генерация AIO ====================
   const generateAIContent = async () => {
     if (!content || !userId) return;
+
     setAiGenerating(true);
     try {
       const data = await PromotionApi.aio(userId, url.trim());
-      console.log(data);
       setAiContent(data);
       setShowAiContent(true);
     } catch (error) {
@@ -141,6 +222,7 @@ export default function PromotionPage() {
   // ==================== Отправка сообщения в чат ====================
   const sendMessage = async () => {
     if (!inputMessage.trim() || !url || isSending) return;
+
     const userText = inputMessage.trim();
     const userMsg = {
       id: Date.now(),
@@ -155,6 +237,7 @@ export default function PromotionPage() {
 
     try {
       const response = await PromotionApi.chat(userId, userText);
+
       const aiMsg = {
         id: Date.now() + 1,
         type: "ai",
@@ -164,8 +247,15 @@ export default function PromotionPage() {
           response.message ||
           "Извините, я не смог обработать запрос.",
       };
+
       const updatedMessages = [...newMessages, aiMsg];
       setMessages(updatedMessages);
+
+      // Сохраняем чат
+      setChatHistory((prev) => ({
+        ...prev,
+        [url]: updatedMessages,
+      }));
     } catch (error) {
       console.error("Ошибка отправки сообщения в чат:", error);
       const errorMsg = {
@@ -173,7 +263,13 @@ export default function PromotionPage() {
         type: "ai",
         text: "⚠️ Произошла ошибка при обработке вашего запроса. Попробуйте ещё раз.",
       };
-      setMessages((prev) => [...prev, errorMsg]);
+      const updatedMessages = [...newMessages, errorMsg];
+      setMessages(updatedMessages);
+
+      setChatHistory((prev) => ({
+        ...prev,
+        [url]: updatedMessages,
+      }));
     } finally {
       setIsSending(false);
     }
@@ -218,13 +314,12 @@ export default function PromotionPage() {
       : "Посмотреть AIO контент";
   };
 
-  // ==================== Обработчик выбора записи из истории ====================
   const handleHistorySelect = (item) => {
     setContent(item.result);
-    setAiContent(item.result); // можно убрать, если не нужно сразу показывать AIO
+    setAiContent(item.result);
     setShowAiContent(false);
     setShowHistory(false);
-    setUrl(item.result?.url || url); // опционально — подставляем URL
+    setUrl(item.result?.url || url);
   };
 
   return (
@@ -283,8 +378,8 @@ export default function PromotionPage() {
             {/* Основной контент */}
             <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 lg:p-10 overflow-auto">
               {showHistory ? (
-                <div className="space-y-6">
-                  <h2 className="text-2xl font-bold flex items-center gap-3">
+                <div className="space-y-8">
+                  <h2 className="text-3xl font-bold flex items-center gap-4">
                     <History className="text-red-400" /> История генераций
                   </h2>
 
@@ -303,91 +398,122 @@ export default function PromotionPage() {
                       <p className="text-lg">История генераций пока пуста</p>
                     </div>
                   ) : (
-                    historyData.map((item, index) => {
-                      const date = new Date(item.created_at);
-                      const seoScore =
-                        item.result?.seo_result?.seo?.score ?? null;
-                      let h1 = "Анализ сайта";
+                    <>
+                      <div className="grid gap-6">
+                        {historyData.map((item, index) => {
+                          const date = new Date(item.created_at);
+                          const seoScore =
+                            item.result?.seo_result?.seo?.score ?? null;
+                          let h1 = "Анализ сайта";
 
-                      if (item.result?.content_generation_result?.h1) {
-                        h1 = item.result.content_generation_result.h1;
-                      } else if (
-                        item.result?.new_content?.transformed_content
-                      ) {
-                        const match =
-                          item.result.new_content.transformed_content.match(
-                            /^#\s(.+)$/m,
-                          );
-                        if (match) h1 = match[1];
-                      }
+                          if (item.result?.content_generation_result?.h1) {
+                            h1 = item.result.content_generation_result.h1;
+                          } else if (
+                            item.result?.new_content?.transformed_content
+                          ) {
+                            const match =
+                              item.result.new_content.transformed_content.match(
+                                /^#\s(.+)$/m,
+                              );
+                            if (match) h1 = match[1];
+                          }
 
-                      const summary =
-                        item.result?.seo_result?.overall_summary ||
-                        item.result?.new_content?.transformed_content?.slice(
-                          0,
-                          220,
-                        ) + "..." ||
-                        "SEO анализ и генерация контента";
+                          const summary =
+                            item.result?.seo_result?.overall_summary ||
+                            (item.result?.new_content?.transformed_content
+                              ? item.result.new_content.transformed_content.slice(
+                                  0,
+                                  220,
+                                ) + "..."
+                              : "SEO анализ и генерация контента");
 
-                      return (
-                        <div
-                          key={item.id || index}
-                          onClick={() => handleHistorySelect(item)}
-                          className="group bg-dark-800 border border-neutral-800 hover:border-red-500/50 rounded-3xl p-6 transition-all cursor-pointer hover:shadow-xl"
-                        >
-                          <div className="flex flex-col lg:flex-row gap-6">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-3">
-                                <div className="px-3 py-1 text-xs bg-neutral-700 rounded-full text-neutral-400 flex items-center gap-1">
-                                  <Calendar className="w-3.5 h-3.5" />
-                                  {format(date, "dd MMMM yyyy", { locale: ru })}
+                          return (
+                            <div
+                              key={item.id || index}
+                              onClick={() => handleHistorySelect(item)}
+                              className="group bg-dark-800 border border-neutral-800 hover:border-red-500/50 rounded-3xl p-6 transition-all cursor-pointer hover:shadow-xl"
+                            >
+                              <div className="flex flex-col lg:flex-row gap-6">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-3">
+                                    <div className="px-3 py-1 text-xs bg-neutral-700 rounded-full text-neutral-400 flex items-center gap-1">
+                                      <Calendar className="w-3.5 h-3.5" />
+                                      {format(date, "dd MMMM yyyy", {
+                                        locale: ru,
+                                      })}
+                                    </div>
+                                    <div className="px-3 py-1 text-xs bg-neutral-700 rounded-full text-neutral-400 flex items-center gap-1">
+                                      <Clock className="w-3.5 h-3.5" />
+                                      {format(date, "HH:mm")}
+                                    </div>
+                                  </div>
+                                  <h3 className="text-xl font-semibold mb-2 group-hover:text-red-400 transition-colors line-clamp-2">
+                                    {h1}
+                                  </h3>
+                                  <p className="text-neutral-400 text-sm line-clamp-3">
+                                    {summary}
+                                  </p>
+                                  {seoScore && (
+                                    <div className="mt-4 text-sm">
+                                      SEO:{" "}
+                                      <span
+                                        className={`font-semibold ${
+                                          seoScore >= 70
+                                            ? "text-emerald-400"
+                                            : "text-amber-400"
+                                        }`}
+                                      >
+                                        {seoScore}/100
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="px-3 py-1 text-xs bg-neutral-700 rounded-full text-neutral-400 flex items-center gap-1">
-                                  <Clock className="w-3.5 h-3.5" />
-                                  {format(date, "HH:mm")}
+                                <div className="lg:w-40 flex items-end">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleHistorySelect(item);
+                                    }}
+                                    className="w-full py-3 bg-red-600 hover:bg-red-500 rounded-2xl text-sm font-medium flex items-center justify-center gap-2"
+                                  >
+                                    Открыть
+                                    <ArrowRight className="w-4 h-4" />
+                                  </button>
                                 </div>
                               </div>
-
-                              <h3 className="text-xl font-semibold mb-2 group-hover:text-red-400 transition-colors line-clamp-2">
-                                {h1}
-                              </h3>
-
-                              <p className="text-neutral-400 text-sm line-clamp-3">
-                                {summary}
-                              </p>
-
-                              {seoScore && (
-                                <div className="mt-4 text-sm">
-                                  SEO:{" "}
-                                  <span
-                                    className={`font-semibold ${seoScore >= 70 ? "text-emerald-400" : "text-amber-400"}`}
-                                  >
-                                    {seoScore}/100
-                                  </span>
-                                </div>
-                              )}
+                              <div className="mt-4 pt-4 border-t border-neutral-700 text-xs text-neutral-500 truncate font-mono">
+                                {item.result?.url}
+                              </div>
                             </div>
+                          );
+                        })}
+                      </div>
 
-                            <div className="lg:w-40 flex items-end">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleHistorySelect(item);
-                                }}
-                                className="w-full py-3 bg-red-600 hover:bg-red-500 rounded-2xl text-sm font-medium flex items-center justify-center gap-2"
-                              >
-                                Открыть
-                                <ArrowRight className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 pt-4 border-t border-neutral-700 text-xs text-neutral-500 truncate font-mono">
-                            {item.result?.url}
-                          </div>
+                      {hasMore ? (
+                        <div className="flex justify-center mt-8">
+                          <button
+                            onClick={loadMore}
+                            disabled={loadingMore}
+                            className="px-8 py-3 bg-neutral-800 hover:bg-neutral-700 rounded-2xl flex items-center gap-2 disabled:opacity-70 transition-colors"
+                          >
+                            {loadingMore ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Загрузка...
+                              </>
+                            ) : (
+                              "Загрузить ещё"
+                            )}
+                          </button>
                         </div>
-                      );
-                    })
+                      ) : (
+                        historyData.length > 0 && (
+                          <div className="text-center text-neutral-500 py-6 text-sm">
+                            Это вся история генераций
+                          </div>
+                        )
+                      )}
+                    </>
                   )}
                 </div>
               ) : !content ? (
@@ -406,7 +532,6 @@ export default function PromotionPage() {
           {content && !showHistory && (
             <div className="w-96 shrink-0 hidden lg:block">
               <div className="sticky top-28 flex flex-col gap-4 h-[calc(100vh-7rem)]">
-                {/* Кнопка AIO */}
                 <button
                   onClick={
                     showAiContent
@@ -421,7 +546,6 @@ export default function PromotionPage() {
                   {getMainButtonText()}
                 </button>
 
-                {/* Кнопка открытия чата */}
                 {!chatOpen && (
                   <button
                     onClick={openChat}
@@ -434,11 +558,9 @@ export default function PromotionPage() {
                   </button>
                 )}
 
-                {/* ЧАТ */}
                 {chatOpen && (
                   <div className="flex-1 flex flex-col min-h-0">
                     <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl flex flex-col h-full overflow-hidden shadow-xl">
-                      {/* Заголовок чата */}
                       <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-800 shrink-0">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 bg-red-500/10 rounded-2xl flex items-center justify-center">
@@ -467,7 +589,6 @@ export default function PromotionPage() {
                         </div>
                       </div>
 
-                      {/* Сообщения чата */}
                       <div className="flex-1 p-6 overflow-y-auto space-y-6 text-sm custom-scroll">
                         {messages.map((msg) => (
                           <div
@@ -493,6 +614,7 @@ export default function PromotionPage() {
                             </div>
                           </div>
                         ))}
+
                         {isSending && (
                           <div className="flex justify-start">
                             <div className="bg-neutral-800 rounded-3xl px-5 py-3 flex items-center gap-3">
@@ -505,7 +627,6 @@ export default function PromotionPage() {
                         )}
                       </div>
 
-                      {/* Поле ввода */}
                       <div className="p-4 border-t border-neutral-800 shrink-0">
                         <div className="flex gap-3">
                           <input
