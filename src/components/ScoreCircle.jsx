@@ -49,7 +49,7 @@ export default function ScoreCircle({ score, label }) {
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <div
-            className="text-6xl font-bold"
+            className="text-5xl font-bold"
             style={{ color: getScoreColor(score) }}
           >
             {score}

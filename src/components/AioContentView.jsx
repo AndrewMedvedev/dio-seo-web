@@ -59,7 +59,7 @@ export default function AioContentView({ aiContent }) {
             )}
           </button>
         </div>
-        <pre className="text-xs text-neutral-400 overflow-auto bg-black/50 p-5 rounded-2xl max-h-96 whitespace-pre-wrap">
+        <pre className="text-xs text-neutral-400 bg-black/50 p-5 rounded-2xl max-h-96 overflow-auto whitespace-pre-wrap wrap-break-word">
           {mainContent || "Нет сгенерированного контента"}
         </pre>
       </div>
@@ -86,7 +86,7 @@ export default function AioContentView({ aiContent }) {
           </button>
         </div>
 
-        <pre className="text-xs text-neutral-400 overflow-auto bg-black/50 p-5 rounded-2xl max-h-96 whitespace-pre-wrap">
+        <pre className="text-xs text-neutral-400 bg-black/50 p-5 rounded-2xl max-h-96 overflow-auto whitespace-pre-wrap wrap-break-word">
           {placementRec || "Нет рекомендаций"}
         </pre>
       </div>
@@ -118,7 +118,7 @@ export default function AioContentView({ aiContent }) {
               )}
             </button>
           </div>
-          <pre className="text-xs text-neutral-400 overflow-auto bg-black/50 p-5 rounded-2xl max-h-96 whitespace-pre-wrap">
+          <pre className="text-xs text-neutral-400 bg-black/50 p-5 rounded-2xl max-h-96 overflow-auto whitespace-pre-wrap wrap-break-word">
             {jsonLd || "Нет данных"}
           </pre>
         </div>
@@ -146,7 +146,7 @@ export default function AioContentView({ aiContent }) {
               )}
             </button>
           </div>
-          <pre className="text-xs text-neutral-400 overflow-auto bg-black/50 p-5 rounded-2xl max-h-96 whitespace-pre-wrap">
+          <pre className="text-xs text-neutral-400 bg-black/50 p-5 rounded-2xl max-h-96 overflow-auto whitespace-pre-wrap wrap-break-word">
             {robotsTxt || "Нет данных"}
           </pre>
         </div>
@@ -174,7 +174,7 @@ export default function AioContentView({ aiContent }) {
               )}
             </button>
           </div>
-          <pre className="text-xs text-neutral-400 overflow-auto bg-black/50 p-5 rounded-2xl max-h-96 whitespace-pre-wrap">
+          <pre className="text-xs text-neutral-400 bg-black/50 p-5 rounded-2xl max-h-96 overflow-auto whitespace-pre-wrap wrap-break-word">
             {llmsTxt || "Нет данных"}
           </pre>
         </div>
