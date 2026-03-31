@@ -18,9 +18,9 @@ export const PromotionApi = {
   },
 
   /** Генерация AIO контента */
-  aio: async (userId, url) => {
+  aio: async (userId, url, generationId) => {
     const response = await apiClient.get(
-      `/api/v1/aio/${userId}?url=${encodeURIComponent(url)}`,
+      `/api/v1/aio/${userId}/${generationId}?url=${url}`,
     );
     return response.data;
   },
@@ -34,9 +34,10 @@ export const PromotionApi = {
   },
 
   /** Отправка сообщения в чат */
-  chat: async (userId, text) => {
+  chat: async (userId, text, generationId) => {
     const response = await apiClient.post(`/api/v1/chat`, {
       user_id: userId,
+      generation_id: generationId,
       role: "user",
       text: text,
     });

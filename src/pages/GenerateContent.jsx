@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Upload, FileText, X, MessageCircle } from "lucide-react";
-import Header from "../components/layout/Header";
 import ChatMessageList from "../components/ChatMessageList";
 import ChatInputBox from "../components/ChatInputBox";
 
@@ -126,8 +125,6 @@ export default function ContentGenerationPage() {
 
   return (
     <div className="min-h-screen bg-dark-900 text-white">
-      <Header />
-
       <div className="pt-24 lg:pt-28 px-6 lg:px-12 max-w-screen-2xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Левая колонка — Только загрузка файлов */}
