@@ -1,127 +1,170 @@
-import { useState } from "react";
-import { Upload, FileText, X, MessageCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Upload,
+  FileText,
+  MessageCircle,
+  Loader2,
+  RefreshCcw,
+} from "lucide-react";
 import Header from "../components/layout/Header";
 import ChatMessageList from "../components/ChatMessageList";
 import ChatInputBox from "../components/ChatInputBox";
+import { GenerationApi } from "../api/Generation";
 
-const MOCK_UPLOADED_HISTORY = [
-  {
-    id: "kb-1",
-    name: "tone-of-voice-guide.pdf",
-    sizeKb: 284,
-    uploadedAt: "24.03.2026 12:10",
-  },
-  {
-    id: "kb-2",
-    name: "product-faq.docx",
-    sizeKb: 96,
-    uploadedAt: "25.03.2026 09:42",
-  },
-  {
-    id: "kb-3",
-    name: "target-audience-notes.txt",
-    sizeKb: 18,
-    uploadedAt: "25.03.2026 20:05",
-  },
-];
+const INITIAL_MESSAGE = {
+  id: "assistant-welcome",
+  type: "ai",
+  text: "База знаний подключена. Загрузите документы и задайте вопрос, чтобы получить ответ на основе материалов из базы знаний. Я могу помочь с генерацией текстов, ответами на вопросы и созданием контента на основе предоставленных данных.",
+};
 
-const MOCK_CHAT_MESSAGES = [
-  {
-    id: 1,
-    type: "ai",
-    text: "База знаний подключена. Могу подготовить пост, статью или контент-план.",
-    sources: ["tone-of-voice-guide.pdf", "product-faq.docx"],
-  },
-  {
-    id: 2,
-    type: "user",
-    text: "Сделай короткий пост для Telegram про запуск новой функции.",
-  },
-  {
-    id: 3,
-    type: "ai",
-    text: "Готово! Сделал пост в дружелюбном стиле бренда и добавил акцент на ценность для пользователя.",
-    sources: ["tone-of-voice-guide.pdf"],
-  },
-];
-
-const MOCK_AI_REPLIES = [
-  "Собрал черновик на основе базы знаний. Могу сделать более формальный или более продающий вариант.",
-  "Подготовил текст с учетом FAQ и позиционирования продукта. Если нужно, добавлю CTA.",
-  "Сгенерировал вариант контента и сохранил тональность бренда. Готов адаптировать под нужный канал.",
-];
+const formatBackendFiles = (items = []) =>
+  items.map((file, index) => ({
+    id: `${file.name || "kb-file"}-${index}`,
+    name: file.name || "Без названия",
+    link: file.link || "",
+  }));
 
 export default function ContentGenerationPage() {
-  const [files, setFiles] = useState([]);
-  const [historyFiles, setHistoryFiles] = useState(MOCK_UPLOADED_HISTORY);
-  const [messages, setMessages] = useState(MOCK_CHAT_MESSAGES);
+  const fileInputRef = useRef(null);
+
+  const [historyFiles, setHistoryFiles] = useState([]);
+  const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const [inputMessage, setInputMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [filesLoading, setFilesLoading] = useState(true);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [chatStatus, setChatStatus] = useState("");
 
-  // Загрузка файлов
-  const handleFileUpload = (e) => {
-    const selectedFiles = Array.from(e.target.files);
+  const loadFiles = async ({ keepStatus = false } = {}) => {
+    setFilesLoading(true);
+
+    try {
+      const data = await GenerationApi.listFiles();
+      const nextFiles = formatBackendFiles(data.files);
+
+      setHistoryFiles(nextFiles);
+      if (nextFiles.length > 0) {
+        setIsHistoryOpen(true);
+      }
+
+      if (!keepStatus) {
+        setUploadStatus("");
+      }
+    } catch (error) {
+      console.error("Ошибка загрузки файлов базы знаний:", error);
+      setUploadStatus("Не удалось загрузить список файлов базы знаний.");
+    } finally {
+      setFilesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFiles();
+  }, []);
+
+  const handleFileUpload = async (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
     if (!selectedFiles.length) return;
+
     setIsUploading(true);
+    setUploadStatus("");
 
-    // Имитация загрузки
-    setTimeout(() => {
-      const now = new Date();
-      const uploadedAt = now.toLocaleString("ru-RU", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+    const uploadedNames = [];
+    const failedNames = [];
 
-      const newFilesForHistory = selectedFiles.map((file, index) => ({
-        id: `${Date.now()}-${index}`,
-        name: file.name,
-        sizeKb: Number((file.size / 1024).toFixed(1)),
-        uploadedAt,
-      }));
-      setFiles((prev) => [...prev, ...selectedFiles]);
-      setHistoryFiles((prev) => [...newFilesForHistory, ...prev]);
-      setIsUploading(false);
-      setIsHistoryOpen(true);
-    }, 800);
+    for (const file of selectedFiles) {
+      try {
+        await GenerationApi.upload(file);
+        uploadedNames.push(file.name);
+      } catch (error) {
+        console.error(`Ошибка загрузки файла ${file.name}:`, error);
+        failedNames.push(file.name);
+      }
+    }
+
+    await loadFiles({ keepStatus: true });
+
+    const statusChunks = [];
+    if (uploadedNames.length > 0) {
+      statusChunks.push(`Успешно загружено: ${uploadedNames.join(", ")}`);
+    }
+    if (failedNames.length > 0) {
+      statusChunks.push(`Не удалось загрузить: ${failedNames.join(", ")}`);
+    }
+
+    setUploadStatus(
+      statusChunks.join(". ") || "Не удалось загрузить выбранные файлы.",
+    );
+    setIsUploading(false);
+    e.target.value = "";
   };
 
-  // Удаление файла
-  const removeFile = (index) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Отправка сообщения в чат
-  const sendMessage = () => {
-    if (!inputMessage.trim()) return;
+  const sendMessage = async () => {
+    const userText = inputMessage.trim();
+    if (!userText || isSending) return;
 
     const userMessage = {
       id: Date.now(),
       type: "user",
-      text: inputMessage.trim(),
+      text: userText,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
+    setChatStatus("");
+    setIsSending(true);
 
-    setTimeout(() => {
-      const randomReply =
-        MOCK_AI_REPLIES[Math.floor(Math.random() * MOCK_AI_REPLIES.length)];
+    try {
+      const response = await GenerationApi.chat(userText);
       const aiReply = {
         id: Date.now() + 1,
         type: "ai",
-        text: randomReply,
-        sources: historyFiles.slice(0, 2).map((file) => file.name),
+        text: response.answer || "Backend вернул пустой ответ.",
       };
+
       setMessages((prev) => [...prev, aiReply]);
-    }, 900);
+    } catch (error) {
+      console.error("Ошибка отправки сообщения:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          type: "ai",
+          text: "Не удалось получить ответ от backend. Попробуйте ещё раз.",
+        },
+      ]);
+      setChatStatus("Ошибка запроса к backend.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const resetChat = async () => {
+    if (isResetting) return;
+
+    setIsResetting(true);
+    setChatStatus("");
+
+    try {
+      await GenerationApi.resetChat();
+      setMessages([INITIAL_MESSAGE]);
+      setChatStatus("Диалог очищен.");
+    } catch (error) {
+      console.error("Ошибка сброса чата:", error);
+      setChatStatus("Не удалось сбросить чат.");
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === "Enter") sendMessage();
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
   return (
@@ -130,7 +173,6 @@ export default function ContentGenerationPage() {
 
       <div className="pt-24 lg:pt-28 px-6 lg:px-12 max-w-screen-2xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Левая колонка — Только загрузка файлов */}
           <div className="lg:col-span-4">
             <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 h-full">
               <h2 className="text-xl font-semibold mb-6 flex items-center gap-3">
@@ -138,7 +180,6 @@ export default function ContentGenerationPage() {
                 Загрузка файлов в базу знаний
               </h2>
 
-              {/* Область загрузки */}
               <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-700 hover:border-red-500/50 rounded-2xl py-16 cursor-pointer transition-colors">
                 <Upload className="w-12 h-12 text-neutral-500 mb-4" />
                 <p className="text-neutral-400 text-center">
@@ -147,9 +188,10 @@ export default function ContentGenerationPage() {
                   или нажмите для выбора
                 </p>
                 <p className="text-xs text-neutral-500 mt-2">
-                  PDF, DOCX, TXT, JPG, PNG
+                  PDF, DOCX, TXT, XLSX, PPTX, JPG, PNG
                 </p>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   multiple
                   onChange={handleFileUpload}
@@ -157,50 +199,25 @@ export default function ContentGenerationPage() {
                 />
               </label>
 
-              {/* Список загруженных файлов */}
-              {files.length > 0 && (
-                <div className="mt-8">
-                  <p className="text-sm text-neutral-400 mb-4">
-                    Загруженные файлы:
-                  </p>
-                  <div className="space-y-3">
-                    {files.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between bg-dark-800 border border-neutral-800 rounded-2xl px-5 py-4"
-                      >
-                        <div className="flex items-center gap-3">
-                          <FileText className="w-5 h-5 text-red-400" />
-                          <div>
-                            <p className="text-sm truncate max-w-55">
-                              {file.name}
-                            </p>
-                            <p className="text-xs text-neutral-500">
-                              {(file.size / 1024).toFixed(1)} KB
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => removeFile(index)}
-                          className="text-neutral-400 hover:text-red-500 transition-colors"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+              {uploadStatus && (
+                <div className="mt-6 rounded-2xl border border-neutral-800 bg-dark-800 px-4 py-3 text-sm text-neutral-300">
+                  {uploadStatus}
                 </div>
               )}
 
-              {/* Кнопка теперь только "Загрузить файл" */}
               <button
-                onClick={() =>
-                  document.querySelector('input[type="file"]').click()
-                }
+                onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="mt-8 w-full py-4 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed rounded-2xl font-medium transition-all active:scale-[0.985]"
+                className="mt-8 w-full py-4 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed rounded-2xl font-medium transition-all active:scale-[0.985] flex items-center justify-center gap-2"
               >
-                {isUploading ? "Загружаем..." : "Загрузить файл"}
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Загружаем...
+                  </>
+                ) : (
+                  "Загрузить файл"
+                )}
               </button>
 
               <button
@@ -214,27 +231,35 @@ export default function ContentGenerationPage() {
 
               <div
                 className={`transition-all duration-300 overflow-hidden ${
-                  isHistoryOpen
-                    ? "max-h-85 opacity-100 mt-4"
-                    : "max-h-0 opacity-0"
+                  isHistoryOpen ? "max-h-85 opacity-100 mt-4" : "max-h-0 opacity-0"
                 }`}
               >
                 <div className="bg-dark-800 border border-neutral-800 rounded-2xl overflow-hidden">
                   <div className="p-4 space-y-3 overflow-y-auto max-h-80 pr-2">
-                    {historyFiles.length === 0 ? (
+                    {filesLoading ? (
+                      <div className="flex items-center gap-3 text-sm text-neutral-400">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Загружаем список файлов...
+                      </div>
+                    ) : historyFiles.length === 0 ? (
                       <p className="text-sm text-neutral-500">
-                        История пока пустая
+                        База знаний пока пустая
                       </p>
                     ) : (
                       historyFiles.map((file) => (
                         <div
                           key={file.id}
-                          className="border border-neutral-800 rounded-xl px-3 py-2"
+                          className="border border-neutral-800 rounded-xl px-3 py-3"
                         >
-                          <p className="text-sm truncate">{file.name}</p>
-                          <p className="text-xs text-neutral-500 mt-1">
-                            {file.sizeKb} KB • {file.uploadedAt}
-                          </p>
+                          <div className="flex items-start gap-3">
+                            <FileText className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm truncate">{file.name}</p>
+                              <p className="text-xs text-neutral-500 mt-1 break-all">
+                                {file.link}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       ))
                     )}
@@ -244,11 +269,9 @@ export default function ContentGenerationPage() {
             </div>
           </div>
 
-          {/* Правая колонка — Чат "Генерация контента по базе знаний" */}
           <div className="lg:col-span-8">
             <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl h-full flex flex-col overflow-hidden min-h-155">
-              {/* Шапка чата */}
-              <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-800 shrink-0">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-800 shrink-0 gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 bg-red-500/10 rounded-2xl flex items-center justify-center">
                     <MessageCircle className="w-5 h-5 text-red-400" />
@@ -262,22 +285,46 @@ export default function ContentGenerationPage() {
                     </div>
                   </div>
                 </div>
+
+                <button
+                  onClick={resetChat}
+                  disabled={isResetting}
+                  className="shrink-0 px-4 py-2 rounded-2xl border border-neutral-700 hover:border-red-500/50 hover:text-white text-sm text-neutral-300 transition-colors disabled:opacity-70 flex items-center gap-2"
+                >
+                  {isResetting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Сброс...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCcw className="w-4 h-4" />
+                      Очистить чат
+                    </>
+                  )}
+                </button>
               </div>
 
-              {/* Сообщения чата */}
+              {chatStatus && (
+                <div className="px-6 pt-4 text-sm text-neutral-400">
+                  {chatStatus}
+                </div>
+              )}
+
               <ChatMessageList
                 messages={messages}
                 className="flex-1 p-6 overflow-y-auto space-y-6 text-sm"
-                renderMeta={(msg) =>
-                  msg.sources?.length > 0 ? (
-                    <p className="text-xs text-neutral-400 mt-2">
-                      Источники: {msg.sources.join(", ")}
-                    </p>
-                  ) : null
-                }
               />
 
-              {/* Поле ввода чата */}
+              {isSending && (
+                <div className="px-6 pb-4">
+                  <div className="inline-flex items-center gap-3 bg-neutral-800 rounded-3xl px-5 py-3 text-sm text-neutral-400">
+                    <Loader2 className="w-4 h-4 animate-spin text-red-400" />
+                    Генерирую ответ...
+                  </div>
+                </div>
+              )}
+
               <div className="p-4 border-t border-neutral-800 shrink-0">
                 <ChatInputBox
                   value={inputMessage}
@@ -285,7 +332,8 @@ export default function ContentGenerationPage() {
                   onKeyDown={handleKeyPress}
                   onSend={sendMessage}
                   placeholder="Опишите, какой контент нужно сгенерировать..."
-                  disabled={!inputMessage.trim()}
+                  inputDisabled={isSending}
+                  disabled={isSending || !inputMessage.trim()}
                 />
               </div>
             </div>
