@@ -1,4 +1,3 @@
-import React, { useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import {
   X,
@@ -19,23 +18,11 @@ import { useChat } from "./hooks/useChat";
 import { useHistory } from "./hooks/useHistory";
 import { usePromotionActions } from "./hooks/usePromotionActions";
 
-const userId = "d9cb70ab-9403-4e62-9f17-225cc00176aa";
-
 export default function PromotionPage() {
   const state = usePromotionState();
-  const history = useHistory(userId);
-  const chat = useChat(state.url, userId, state.generationId);
-  const actions = usePromotionActions(
-    userId,
-    state.url,
-    state.generationId,
-    state.setContent,
-    state.setAiContent,
-    state.setShowAiContent,
-    state.setLoading,
-    state.setAiGenerating,
-    state.setGenerationId,
-  );
+  const history = useHistory();
+  const chat = useChat(state.url, state.generationId);
+  const actions = usePromotionActions(state.url, state.generationId);
 
   const getMainButtonText = () => {
     if (state.aiGenerating) return "Генерируем AIO-контент...";
@@ -53,6 +40,26 @@ export default function PromotionPage() {
     if (item.result?.url) {
       state.setUrl(item.result.url);
     }
+  };
+
+  const onAnalyze = () => {
+    actions.handleAnalyze(
+      state.setContent,
+      state.setAiContent,
+      state.setShowAiContent,
+      state.setLoading,
+      state.setGenerationId,
+    );
+  };
+
+  // Обработчик генерации AIO с передачей setters
+  const onGenerateAIContent = () => {
+    actions.generateAIContent(
+      state.setAiContent,
+      state.setShowAiContent,
+      state.setAiGenerating,
+      state.generationId, // текущий generationId
+    );
   };
 
   // Определяем, нужно ли показывать правую панель (и, соответственно, отступ у левой колонки)
@@ -82,7 +89,7 @@ export default function PromotionPage() {
                       ${state.urlError ? "border-red-500" : "border-neutral-700 focus:border-red-500"}`}
                   />
                   <button
-                    onClick={actions.handleAnalyze}
+                    onClick={onAnalyze}
                     disabled={!state.url.trim() || state.loading}
                     className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed px-10 py-4 rounded-2xl font-medium transition-colors whitespace-nowrap"
                   >
@@ -272,7 +279,7 @@ export default function PromotionPage() {
                   ? () => state.setShowAiContent(false)
                   : state.aiContent
                     ? () => state.setShowAiContent(true)
-                    : actions.generateAIContent
+                    : onGenerateAIContent // ← изменено
               }
               disabled={state.aiGenerating}
               className="w-full py-4 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 rounded-3xl font-medium text-base transition-all active:scale-[0.985]"

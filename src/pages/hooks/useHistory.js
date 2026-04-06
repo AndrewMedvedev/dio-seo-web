@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { PromotionApi } from "../../api/Promotion";
 
-export function useHistory(userId) {
+export function useHistory() {
   const [historyData, setHistoryData] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState(null);
@@ -11,13 +11,12 @@ export function useHistory(userId) {
   const [showHistory, setShowHistory] = useState(false);
 
   const fetchHistory = async (page = 1, isLoadMore = false) => {
-    if (!userId) return;
     if (isLoadMore) setLoadingMore(true);
     else setHistoryLoading(true);
     setHistoryError(null);
 
     try {
-      const data = await PromotionApi.history(userId, page, 10);
+      const data = await PromotionApi.history(page, 10);
       const newItems = data.results || data || [];
 
       if (isLoadMore) {

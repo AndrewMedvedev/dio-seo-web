@@ -1,77 +1,74 @@
+import { useCallback } from "react";
 import { PromotionApi } from "../../api/Promotion";
 
-export function usePromotionActions(
-  userId,
-  url,
-  generationId, // текущее значение
-  setContent,
-  setAiContent,
-  setShowAiContent,
-  setLoading,
-  setAiGenerating,
-  setGenerationId, // setter
-) {
-  const handleAnalyze = async () => {
-    if (!url?.trim() || !userId) return;
+export function usePromotionActions(url, generationId) {
+  const handleAnalyze = useCallback(
+    async (
+      setContent,
+      setAiContent,
+      setShowAiContent,
+      setLoading,
+      setGenerationId,
+    ) => {
+      if (!url?.trim()) return;
 
-    setLoading(true);
-    setContent(null);
-    setAiContent(null);
-    setShowAiContent(false);
-    setGenerationId(null); // сбрасываем перед новым запросом
+      setLoading(true);
+      setContent(null);
+      setAiContent(null);
+      setShowAiContent(false);
+      setGenerationId(null);
 
-    try {
-      const data = await PromotionApi.seo(userId, url.trim());
-      setContent(data);
+      try {
+        const data = await PromotionApi.seo(url.trim());
+        setContent(data);
 
-      // Извлечение generation_id — можно расширить при необходимости
-      const newGenerationId =
-        data?.generation_id ||
-        data?.data?.generation_id ||
-        data?.result?.generation_id ||
-        data?.seo_result?.generation_id; // на всякий случай
+        const newGenerationId =
+          data?.generation_id ||
+          data?.data?.generation_id ||
+          data?.result?.generation_id ||
+          data?.seo_result?.generation_id;
 
-      if (newGenerationId) {
-        setGenerationId(newGenerationId);
-        console.log("✅ Получен generation_id:", newGenerationId);
-      } else {
-        console.warn("⚠️ generation_id не найден в ответе от SEO API:", data);
+        if (newGenerationId) {
+          setGenerationId(newGenerationId);
+          console.log("✅ Получен generation_id:", newGenerationId);
+        } else {
+          console.warn("⚠️ generation_id не найден в ответе:", data);
+        }
+      } catch (error) {
+        console.error("Ошибка анализа SEO:", error);
+        alert("Не удалось проанализировать сайт. Попробуйте позже.");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Ошибка анализа SEO:", error);
-      alert("Не удалось проанализировать сайт. Попробуйте позже.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [url],
+  );
 
-  const generateAIContent = async () => {
-    if (!url?.trim() || !userId) {
-      alert("Введите URL сайта");
-      return;
-    }
+  const generateAIContent = useCallback(
+    async (setAiContent, setShowAiContent, setAiGenerating, generationId) => {
+      if (!url?.trim()) {
+        alert("Введите URL сайта");
+        return;
+      }
+      if (!generationId) {
+        alert("Сначала выполните SEO-анализ");
+        return;
+      }
 
-    if (!generationId) {
-      alert("Сначала выполните SEO-анализ, чтобы получить generation_id");
-      return;
-    }
+      setAiGenerating(true);
+      try {
+        const data = await PromotionApi.aio(url.trim(), generationId);
+        setAiContent(data);
+        setShowAiContent(true);
+      } catch (error) {
+        console.error("Ошибка генерации AIO:", error);
+        alert("Не удалось сгенерировать AIO-контент.");
+      } finally {
+        setAiGenerating(false);
+      }
+    },
+    [url],
+  );
 
-    setAiGenerating(true);
-
-    try {
-      const data = await PromotionApi.aio(userId, url.trim(), generationId);
-      setAiContent(data);
-      setShowAiContent(true);
-    } catch (error) {
-      console.error("Ошибка генерации AIO:", error);
-      alert("Не удалось сгенерировать AIO-контент. Попробуйте позже.");
-    } finally {
-      setAiGenerating(false);
-    }
-  };
-
-  return {
-    handleAnalyze,
-    generateAIContent,
-  };
+  return { handleAnalyze, generateAIContent };
 }

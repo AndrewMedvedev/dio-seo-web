@@ -3,7 +3,7 @@ import { PromotionApi } from "../../api/Promotion";
 
 const CHAT_STORAGE_KEY = "promotion_chat_history";
 
-export function useChat(url, userId, generationId) {
+export function useChat(url, generationId) {
   // ← добавили generationId
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -37,7 +37,20 @@ export function useChat(url, userId, generationId) {
         {
           id: Date.now(),
           type: "ai",
-          text: `Анализ сайта **${url}** завершён. Чем я могу помочь?`,
+          // text: `Анализ сайта **${url}** завершён. Чем я могу помочь?`,
+          text: `Привет! 👋
+Добро пожаловать в чат с ИИ-помощником!
+Я создан специально, чтобы подробно и понятным языком разбирать сгенерированный отчёт сайта.
+Здесь вы можете узнать:
+
+Что означают все метрики и оценки (SEO score, Performance, Core Web Vitals и др.)
+Почему выявлены конкретные ошибки (отсутствие meta-description, слишком короткий title, несколько H1, изображение без alt и т.д.)
+Насколько критична каждая проблема
+Как правильно и эффективно их исправить
+
+Мы занимаемся полным SEO-анализом сайтов и даём точные рекомендации по исправлениям, чтобы ваш сайт лучше ранжировался в поисковиках и приносил больше трафика.
+Задайте любой вопрос по вашему SEO-отчёту и я сразу всё разберу по полочкам.
+С чего начнём? 😊`,
         },
       ];
       setMessages(savedMessages);
@@ -59,7 +72,7 @@ export function useChat(url, userId, generationId) {
 
     try {
       // Теперь передаём generationId в чат
-      const response = await PromotionApi.chat(userId, userText, generationId);
+      const response = await PromotionApi.chat(userText, generationId);
 
       const aiMsg = {
         id: Date.now() + 1,
@@ -115,7 +128,19 @@ export function useChat(url, userId, generationId) {
       {
         id: Date.now(),
         type: "ai",
-        text: `Чат очищен. Чем я могу помочь с сайтом **${url}**?`,
+        text: `Привет! 👋
+Добро пожаловать в чат с ИИ-помощником!
+Я создан специально, чтобы подробно и понятным языком разбирать любой сгенерированный отчёт вашего сайта.
+Здесь вы можете узнать:
+
+Что означают все метрики и оценки (SEO score, Performance, Core Web Vitals и др.)
+Почему выявлены конкретные ошибки (отсутствие meta-description, слишком короткий title, несколько H1, изображение без alt и т.д.)
+Насколько критична каждая проблема
+Как правильно и эффективно их исправить
+
+Мы занимаемся полным SEO-анализом сайтов и даём точные рекомендации по исправлениям, чтобы ваш сайт лучше ранжировался в поисковиках и приносил больше трафика.
+Задайте любой вопрос по вашему SEO-отчёту и я сразу всё разберу по полочкам.
+С чего начнём? 😊`,
       },
     ]);
   };

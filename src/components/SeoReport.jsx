@@ -1,4 +1,16 @@
-import { TrendingUp, AlertTriangle, CheckCircle } from "lucide-react";
+import {
+  BarChart3,
+  FileText,
+  Zap,
+  Target,
+  Award,
+  Users,
+  Lightbulb,
+  AlertTriangle,
+  CheckCircle,
+  Sparkles,
+} from "lucide-react";
+
 import ScoreCircle from "./ScoreCircle";
 
 export default function SeoReport({ content }) {
@@ -10,7 +22,6 @@ export default function SeoReport({ content }) {
   const contentGen = data.content_generation_result || {};
   const performance = seoResult.performance || {};
   const seo = seoResult.seo || {};
-
   const seoScore = seo.score || 0;
   const performanceScore = performance.score || 0;
 
@@ -48,7 +59,7 @@ export default function SeoReport({ content }) {
       {/* Общие оценки */}
       <div>
         <h3 className="text-xl font-semibold mb-8 flex items-center gap-3">
-          <TrendingUp className="text-red-400" /> Общие оценки сайта
+          <BarChart3 className="text-violet-400" /> Общие оценки сайта
         </h3>
         <div className="grid grid-cols-2 gap-10">
           <ScoreCircle score={seoScore} label="SEO Score" />
@@ -58,7 +69,9 @@ export default function SeoReport({ content }) {
 
       {/* Общий обзор */}
       <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8">
-        <h3 className="text-xl font-semibold mb-4">Общий обзор</h3>
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-3">
+          <FileText className="text-neutral-400" /> Общий обзор
+        </h3>
         <p className="text-neutral-300 leading-relaxed">
           {seoResult.overall_summary || "Обзор отсутствует"}
         </p>
@@ -66,7 +79,9 @@ export default function SeoReport({ content }) {
 
       {/* Анализ контента */}
       <div>
-        <h3 className="text-xl font-semibold mb-4">Анализ контента</h3>
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-3">
+          <FileText className="text-amber-400" /> Анализ контента
+        </h3>
         <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 text-neutral-300 leading-relaxed">
           {seoResult.content_analysis || "Анализ контента отсутствует"}
         </div>
@@ -75,14 +90,12 @@ export default function SeoReport({ content }) {
       {/* Core Web Vitals */}
       <div>
         <h3 className="text-xl font-semibold mb-6 flex items-center gap-3">
-          <TrendingUp className="text-red-400" /> Core Web Vitals
+          <Zap className="text-orange-400" /> Core Web Vitals
         </h3>
-
         <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 text-neutral-300 leading-relaxed">
           {seoResult.core_web_vitals_analysis ||
             "Данные Core Web Vitals отсутствуют"}
         </div>
-
         <div className="grid grid-cols-3 gap-6 mt-6">
           {/* LCP */}
           <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-6 text-center">
@@ -95,7 +108,6 @@ export default function SeoReport({ content }) {
               {performance.lcp ? `${performance.lcp}с` : "—"}
             </div>
           </div>
-
           {/* CLS */}
           <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-6 text-center">
             <div className="text-neutral-400 text-sm">CLS</div>
@@ -107,7 +119,6 @@ export default function SeoReport({ content }) {
               {performance.cls ?? "—"}
             </div>
           </div>
-
           {/* FID / INP */}
           <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-6 text-center">
             <div className="text-neutral-400 text-sm">FID / INP</div>
@@ -124,7 +135,9 @@ export default function SeoReport({ content }) {
 
       {/* Специализация компании */}
       <div>
-        <h3 className="text-xl font-semibold mb-4">Специализация компании</h3>
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-3">
+          <Target className="text-blue-400" /> Специализация компании
+        </h3>
         <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 text-neutral-200 leading-relaxed">
           {analystResult.specialization?.specialization || "Не указано"}
         </div>
@@ -132,8 +145,8 @@ export default function SeoReport({ content }) {
 
       {/* Основная область экспертизы */}
       <div>
-        <h3 className="text-xl font-semibold mb-4">
-          Основная область экспертизы
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-3">
+          <Award className="text-emerald-400" /> Основная область экспертизы
         </h3>
         <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 text-neutral-200 leading-relaxed">
           {analystResult.expertise?.main_area || "Данные отсутствуют"}
@@ -142,8 +155,8 @@ export default function SeoReport({ content }) {
 
       {/* Ключевые проблемы клиентов */}
       <div>
-        <h3 className="text-xl font-semibold mb-4">
-          Ключевые проблемы клиентов
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-3">
+          <Users className="text-rose-400" /> Ключевые проблемы клиентов
         </h3>
         <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 text-neutral-300 leading-relaxed">
           {analystResult.expertise?.key_user_problem || "Не указано"}
@@ -152,78 +165,11 @@ export default function SeoReport({ content }) {
 
       {/* Преимущества для клиента */}
       <div>
-        <h3 className="text-xl font-semibold mb-4">Преимущества для клиента</h3>
+        <h3 className="text-xl font-semibold mb-4 flex items-center gap-3">
+          <Lightbulb className="text-yellow-400" /> Преимущества для клиента
+        </h3>
         <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 text-neutral-300 leading-relaxed">
           {analystResult.expertise?.benefit_to_the_user || "Не указано"}
-        </div>
-      </div>
-
-      {/* Семантическое ядро */}
-      <div>
-        <h3 className="text-xl font-semibold mb-6">Семантическое ядро</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Высокая частота */}
-          <div>
-            <div className="text-emerald-400 font-medium mb-3">
-              Высокая частота
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {analystResult.semantic_core?.high_frequency?.length > 0 ? (
-                analystResult.semantic_core.high_frequency.map((kw, i) => (
-                  <span
-                    key={i}
-                    className="bg-emerald-500/10 text-emerald-400 px-4 py-2 rounded-3xl text-sm"
-                  >
-                    {kw}
-                  </span>
-                ))
-              ) : (
-                <p className="text-neutral-500 text-sm">Нет данных</p>
-              )}
-            </div>
-          </div>
-
-          {/* Средняя частота */}
-          <div>
-            <div className="text-yellow-400 font-medium mb-3">
-              Средняя частота
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {analystResult.semantic_core?.medium_frequency?.length > 0 ? (
-                analystResult.semantic_core.medium_frequency.map((kw, i) => (
-                  <span
-                    key={i}
-                    className="bg-yellow-500/10 text-yellow-400 px-4 py-2 rounded-3xl text-sm"
-                  >
-                    {kw}
-                  </span>
-                ))
-              ) : (
-                <p className="text-neutral-500 text-sm">Нет данных</p>
-              )}
-            </div>
-          </div>
-
-          {/* Низкая частота */}
-          <div>
-            <div className="text-orange-400 font-medium mb-3">
-              Низкая частота
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {analystResult.semantic_core?.low_frequency?.length > 0 ? (
-                analystResult.semantic_core.low_frequency.map((kw, i) => (
-                  <span
-                    key={i}
-                    className="bg-orange-500/10 text-orange-400 px-4 py-2 rounded-3xl text-sm"
-                  >
-                    {kw}
-                  </span>
-                ))
-              ) : (
-                <p className="text-neutral-500 text-sm">Нет данных</p>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -294,8 +240,8 @@ export default function SeoReport({ content }) {
 
       {/* Сгенерированный SEO-контент */}
       <div className="border border-neutral-800 rounded-3xl p-8 bg-dark-900">
-        <h3 className="text-xl font-semibold mb-8">
-          Сгенерированный SEO-контент
+        <h3 className="text-xl font-semibold mb-8 flex items-center gap-3">
+          <Sparkles className="text-purple-400" /> Сгенерированный SEO-контент
         </h3>
         <div className="space-y-10">
           <div>
@@ -304,14 +250,12 @@ export default function SeoReport({ content }) {
             </div>
             <p className="text-2xl font-medium">{contentGen.h1 || "—"}</p>
           </div>
-
           <div>
             <div className="uppercase text-xs tracking-widest text-neutral-500 mb-3">
               Title
             </div>
             <p className="text-lg">{contentGen.title || "—"}</p>
           </div>
-
           <div>
             <div className="uppercase text-xs tracking-widest text-neutral-500 mb-3">
               Description
@@ -320,7 +264,6 @@ export default function SeoReport({ content }) {
               {contentGen.description || "—"}
             </p>
           </div>
-
           <div>
             <div className="uppercase text-xs tracking-widest text-neutral-500 mb-4">
               Alt-тексты изображений
@@ -328,33 +271,26 @@ export default function SeoReport({ content }) {
             <div className="space-y-4">
               {Array.isArray(contentGen.alt_tags) &&
               contentGen.alt_tags.length > 0 ? (
-                // Распаковываем первый уровень (если он массив)
-                contentGen.alt_tags.flat().map(
-                  (
-                    item,
-                    i, // ← flat() убирает вложенность
-                  ) => (
-                    <div
-                      key={i}
-                      className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5"
-                    >
-                      <div className="font-medium mb-2 wrap-break-word">
-                        {item?.alt ? item.alt : "Alt-текст отсутствует"}
-                      </div>
-
-                      {item?.url && (
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-neutral-400 hover:text-white break-all"
-                        >
-                          {item.url}
-                        </a>
-                      )}
+                contentGen.alt_tags.flat().map((item, i) => (
+                  <div
+                    key={i}
+                    className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5"
+                  >
+                    <div className="font-medium mb-2 wrap-break-word">
+                      {item?.alt ? item.alt : "Alt-текст отсутствует"}
                     </div>
-                  ),
-                )
+                    {item?.url && (
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-neutral-400 hover:text-white break-all"
+                      >
+                        {item.url}
+                      </a>
+                    )}
+                  </div>
+                ))
               ) : (
                 <p className="text-neutral-500">Alt-тексты не сгенерированы</p>
               )}
@@ -365,10 +301,12 @@ export default function SeoReport({ content }) {
 
       {/* Стоимость анализа */}
       <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 flex justify-between items-center">
-        <div>
-          <div className="text-sm text-neutral-400">Стоимость анализа</div>
-          <div className="text-3xl font-bold text-emerald-400">
-            {data.total_money ? data.total_money.toFixed(2) : "0.00"} ₽
+        <div className="flex items-center gap-3">
+          <div>
+            <div className="text-sm text-neutral-400">Стоимость анализа</div>
+            <div className="text-3xl font-bold text-emerald-400">
+              {data.total_money ? data.total_money.toFixed(2) : "0.00"} ₽
+            </div>
           </div>
         </div>
         <div className="text-right">
