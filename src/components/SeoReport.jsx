@@ -68,13 +68,15 @@ export default function SeoReport({ content }) {
       </div>
 
       {/* Общий обзор */}
-      <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8">
+      <div>
         <h3 className="text-xl font-semibold mb-4 flex items-center gap-3">
           <FileText className="text-neutral-400" /> Общий обзор
         </h3>
-        <p className="text-neutral-300 leading-relaxed">
-          {seoResult.overall_summary || "Обзор отсутствует"}
-        </p>
+        <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 text-neutral-300 leading-relaxed">
+          <p className="text-neutral-300 leading-relaxed">
+            {seoResult.overall_summary || "Обзор отсутствует"}
+          </p>
+        </div>
       </div>
 
       {/* Анализ контента */}
