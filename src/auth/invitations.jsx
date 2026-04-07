@@ -43,7 +43,7 @@ export default function InvitationsPage() {
   return (
     <div className="max-w-2xl mx-auto animate-fadeIn">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-white">Приглашения</h1>
+        <h1 className="text-2xl font-semibold text-white">Приглашение</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

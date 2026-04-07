@@ -3,8 +3,26 @@ import { PromotionApi } from "../../api/Promotion";
 
 const CHAT_STORAGE_KEY = "promotion_chat_history";
 
+const WELCOME_MESSAGE = {
+  id: 1,
+  type: "ai",
+  text: `Привет! 👋
+Добро пожаловать в чат с ИИ-помощником!
+Я создан специально, чтобы подробно и понятным языком разбирать сгенерированный отчёт сайта.
+
+Здесь вы можете узнать:
+• Что означают все метрики и оценки (SEO score, Performance, Core Web Vitals и др.)
+• Почему выявлены конкретные ошибки (отсутствие meta-description, слишком короткий title, несколько H1, изображение без alt и т.д.)
+• Насколько критична каждая проблема
+• Как правильно и эффективно их исправить
+
+Мы занимаемся полным SEO-анализом сайтов и даём точные рекомендации по исправлениям, чтобы ваш сайт лучше ранжировался в поисковиках и приносил больше трафика.
+
+Задайте любой вопрос по вашему SEO-отчёту и я сразу всё разберу по полочкам.
+С чего начнём? 😊`,
+};
+
 export function useChat(url, generationId) {
-  // ← добавили generationId
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [chatHistory, setChatHistory] = useState({});
@@ -22,40 +40,28 @@ export function useChat(url, generationId) {
     }
   }, []);
 
-  // Сохранение истории чата
+  // Сохранение истории чата в localStorage
   useEffect(() => {
     if (Object.keys(chatHistory).length > 0) {
       localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatHistory));
     }
   }, [chatHistory]);
 
-  // Загрузка сообщений при смене URL или generationId
+  // Загрузка сообщений при смене url или generationId
   useEffect(() => {
-    if (url.trim() && generationId) {
-      const key = `${url}_${generationId}`; // теперь ключ зависит от generationId
-      const savedMessages = chatHistory[key] || [
-        {
-          id: Date.now(),
-          type: "ai",
-          // text: `Анализ сайта **${url}** завершён. Чем я могу помочь?`,
-          text: `Привет! 👋
-Добро пожаловать в чат с ИИ-помощником!
-Я создан специально, чтобы подробно и понятным языком разбирать сгенерированный отчёт сайта.
-Здесь вы можете узнать:
+    if (!url?.trim() || !generationId) {
+      setMessages([]);
+      return;
+    }
 
-Что означают все метрики и оценки (SEO score, Performance, Core Web Vitals и др.)
-Почему выявлены конкретные ошибки (отсутствие meta-description, слишком короткий title, несколько H1, изображение без alt и т.д.)
-Насколько критична каждая проблема
-Как правильно и эффективно их исправить
+    const key = `${url}_${generationId}`;
+    const savedMessages = chatHistory[key];
 
-Мы занимаемся полным SEO-анализом сайтов и даём точные рекомендации по исправлениям, чтобы ваш сайт лучше ранжировался в поисковиках и приносил больше трафика.
-Задайте любой вопрос по вашему SEO-отчёту и я сразу всё разберу по полочкам.
-С чего начнём? 😊`,
-        },
-      ];
+    if (savedMessages && savedMessages.length > 0) {
       setMessages(savedMessages);
     } else {
-      setMessages([]);
+      // Если чат пустой или очищен — показываем приветственное сообщение
+      setMessages([WELCOME_MESSAGE]);
     }
   }, [url, generationId, chatHistory]);
 
@@ -71,7 +77,6 @@ export function useChat(url, generationId) {
     setIsSending(true);
 
     try {
-      // Теперь передаём generationId в чат
       const response = await PromotionApi.chat(userText, generationId);
 
       const aiMsg = {
@@ -88,7 +93,6 @@ export function useChat(url, generationId) {
       const updatedMessages = [...newMessages, aiMsg];
       setMessages(updatedMessages);
 
-      // Сохраняем историю с ключом url + generationId
       const historyKey = `${url}_${generationId}`;
       setChatHistory((prev) => ({
         ...prev,
@@ -96,11 +100,13 @@ export function useChat(url, generationId) {
       }));
     } catch (error) {
       console.error("Ошибка отправки сообщения в чат:", error);
+
       const errorMsg = {
         id: Date.now() + 1,
         type: "ai",
         text: "⚠️ Произошла ошибка при обработке вашего запроса. Попробуйте ещё раз.",
       };
+
       const updatedMessages = [...newMessages, errorMsg];
       setMessages(updatedMessages);
 
@@ -118,31 +124,15 @@ export function useChat(url, generationId) {
     if (!url || !generationId) return;
 
     const historyKey = `${url}_${generationId}`;
+
     setChatHistory((prev) => {
       const updated = { ...prev };
       delete updated[historyKey];
       return updated;
     });
 
-    setMessages([
-      {
-        id: Date.now(),
-        type: "ai",
-        text: `Привет! 👋
-Добро пожаловать в чат с ИИ-помощником!
-Я создан специально, чтобы подробно и понятным языком разбирать любой сгенерированный отчёт вашего сайта.
-Здесь вы можете узнать:
-
-Что означают все метрики и оценки (SEO score, Performance, Core Web Vitals и др.)
-Почему выявлены конкретные ошибки (отсутствие meta-description, слишком короткий title, несколько H1, изображение без alt и т.д.)
-Насколько критична каждая проблема
-Как правильно и эффективно их исправить
-
-Мы занимаемся полным SEO-анализом сайтов и даём точные рекомендации по исправлениям, чтобы ваш сайт лучше ранжировался в поисковиках и приносил больше трафика.
-Задайте любой вопрос по вашему SEO-отчёту и я сразу всё разберу по полочкам.
-С чего начнём? 😊`,
-      },
-    ]);
+    // После очистки сразу показываем приветствие
+    setMessages([WELCOME_MESSAGE]);
   };
 
   const handleKeyPress = (e) => {
