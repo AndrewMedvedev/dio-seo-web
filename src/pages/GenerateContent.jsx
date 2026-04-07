@@ -11,6 +11,8 @@ import ChatMessageList from "../components/ChatMessageList";
 import ChatInputBox from "../components/ChatInputBox";
 import { GenerationApi } from "../api/Generation";
 
+const KB_GENERATION_ID_STORAGE_KEY = "kb_generation_id";
+
 const INITIAL_MESSAGE = {
   id: "assistant-welcome",
   type: "ai",
@@ -23,6 +25,22 @@ const formatBackendFiles = (items = []) =>
     name: file.name || "Ð‘ÐµÐ· Ð½Ð°Ð·Ð²Ð°Ð½Ð¸Ñ",
     link: file.link || "",
   }));
+
+const createFallbackGenerationId = () =>
+  `kb-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+const getOrCreateKbGenerationId = () => {
+  const existingId = localStorage.getItem(KB_GENERATION_ID_STORAGE_KEY);
+  if (existingId) return existingId;
+
+  const nextId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : createFallbackGenerationId();
+
+  localStorage.setItem(KB_GENERATION_ID_STORAGE_KEY, nextId);
+  return nextId;
+};
 
 export default function ContentGenerationPage() {
   const fileInputRef = useRef(null);
@@ -37,6 +55,7 @@ export default function ContentGenerationPage() {
   const [filesLoading, setFilesLoading] = useState(true);
   const [uploadStatus, setUploadStatus] = useState("");
   const [chatStatus, setChatStatus] = useState("");
+  const [generationId] = useState(() => getOrCreateKbGenerationId());
 
   const loadFiles = async ({ keepStatus = false } = {}) => {
     setFilesLoading(true);
@@ -118,11 +137,16 @@ export default function ContentGenerationPage() {
     setIsSending(true);
 
     try {
-      const response = await GenerationApi.chat(userText);
+      const response = await GenerationApi.chat(userText, generationId);
       const aiReply = {
         id: Date.now() + 1,
         type: "ai",
-        text: response.answer || "Backend Ð²ÐµÑ€Ð½ÑƒÐ» Ð¿ÑƒÑÑ‚Ð¾Ð¹ Ð¾Ñ‚Ð²ÐµÑ‚.",
+        text:
+          response?.text ||
+          response?.answer ||
+          response?.message ||
+          response?.response ||
+          "Backend âåðíóë ïóñòîé îòâåò.",
       };
 
       setMessages((prev) => [...prev, aiReply]);
@@ -345,3 +369,9 @@ export default function ContentGenerationPage() {
     </div>
   );
 }
+
+
+
+
+
+

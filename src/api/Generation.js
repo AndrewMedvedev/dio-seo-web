@@ -1,13 +1,4 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:8001";
-
-export const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+import { apiClient } from "./Promotion";
 
 export const GenerationApi = {
   upload: async (file) => {
@@ -28,10 +19,11 @@ export const GenerationApi = {
     return response.data;
   },
 
-  chat: async (message) => {
+  chat: async (text, generationId) => {
     const response = await apiClient.post("/api/v1/chat", {
+      generation_id: generationId,
       role: "user",
-      content: message,
+      text,
     });
 
     return response.data;
