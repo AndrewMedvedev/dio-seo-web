@@ -96,7 +96,6 @@ function CustomSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState({});
   const buttonRef = useRef(null);
-
   const selectedOption = options.find((opt) => opt.value === value);
 
   useLayoutEffect(() => {
@@ -142,7 +141,6 @@ function CustomSelect({
           }`}
         />
       </button>
-
       {isOpen &&
         createPortal(
           <>
@@ -231,9 +229,13 @@ export default function SmmPage() {
       text: "SMM-помощник готов. Могу подсказать, как интерпретировать результат и что улучшить в контенте.",
     },
   ]);
-
-  // ✨ состояние раскрытия базы знаний
   const [isKnowledgeExpanded, setIsKnowledgeExpanded] = useState(false);
+
+  // === НОВЫЕ КЛАССЫ ДЛЯ ДИНАМИЧЕСКОЙ РАЗВЁРНУТОЙ РАСКЛАДКИ ===
+  const mainColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-9" : "xl:col-span-8";
+  const sideColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-3" : "xl:col-span-4";
+  const kbColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-9" : "xl:col-span-2";
+  const rightColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-3" : "xl:col-span-10";
 
   const imageDataUrl = useMemo(() => {
     if (!generateResult?.generated_image_base64) return "";
@@ -244,9 +246,7 @@ export default function SmmPage() {
   const sendAssistantMessage = () => {
     const text = assistantInput.trim();
     if (!text) return;
-
     const userMessage = { id: `${Date.now()}-u`, type: "user", text };
-
     const aiReplyText =
       mode === "analyze"
         ? analyzeResult
@@ -255,9 +255,7 @@ export default function SmmPage() {
         : generateResult
           ? "Проверьте тональность и длину текста. Для image-постов можно уточнить prompt и перегенерировать изображение."
           : "Сначала сгенерируйте контент, затем можно обсудить финальную редактуру перед публикацией.";
-
     const aiMessage = { id: `${Date.now()}-a`, type: "ai", text: aiReplyText };
-
     setAssistantMessages((prev) => [...prev, userMessage, aiMessage]);
     setAssistantInput("");
   };
@@ -312,7 +310,6 @@ export default function SmmPage() {
       setRegenerateImageError("Нет текста поста для генерации изображения.");
       return;
     }
-
     setRegenerateImageError("");
     setRegenerateImageLoading(true);
     try {
@@ -323,7 +320,6 @@ export default function SmmPage() {
         tone: generateResult?.tone || generateForm.tone || null,
         language: generateForm.language || "ru",
       });
-
       setEditedImagePrompt(data.image_prompt || "");
       setGenerateResult((prev) =>
         prev
@@ -348,7 +344,6 @@ export default function SmmPage() {
       setPublishError("Текст пустой, нечего публиковать.");
       return;
     }
-
     setPublishError("");
     setPublishSuccess("");
     setPublishLoading(true);
@@ -379,12 +374,12 @@ export default function SmmPage() {
     <div className="min-h-screen bg-dark-900 text-white">
       <div className="pt-24 lg:pt-28 px-6 lg:px-12 max-w-screen-2xl mx-auto pb-10">
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
-          <div className="xl:col-span-8">
+          {/* Основная область (analyze / generate) — теперь динамическая ширина */}
+          <div className={mainColSpanClass}>
             {mode === "analyze" ? (
+              /* АНАЛИЗ — без изменений */
               <div className="flex flex-col gap-4">
-                {/* Фильтры анализа (без изменений) */}
                 <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl">
-                  {/* ... содержимое без изменений ... */}
                   <button
                     type="button"
                     onClick={() => setIsFiltersOpen((prev) => !prev)}
@@ -435,9 +430,7 @@ export default function SmmPage() {
                   </div>
                 </div>
 
-                {/* Основной блок анализа (без изменений) */}
                 <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 lg:p-10 overflow-y-auto flex flex-col">
-                  {/* ... всё содержимое анализа остаётся без изменений ... */}
                   <h2 className="text-2xl font-semibold">Анализ VK-группы</h2>
                   <p className="mt-2 text-neutral-400 text-sm">
                     Введите ссылку или идентификатор группы, затем получите разбор метрик, рекомендаций и конкурентов.
@@ -576,56 +569,48 @@ export default function SmmPage() {
                 </div>
               </div>
             ) : (
-              /* ✨ РЕЖИМ ГЕНЕРАЦИИ: интерактивная база знаний + генерация */
+              /* ГЕНЕРАЦИЯ — обновлённая раскладка с учётом ваших требований */
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-full">
-                {/* Левая колонка: База знаний */}
-                <div
-                  className={`transition-all duration-500 ease-in-out h-full ${
-                    isKnowledgeExpanded ? "xl:col-span-8" : "xl:col-span-4"
-                  }`}
-                >
+                {/* База знаний — теперь шире (col-span-9) и занимает больше пространства при развёрнутом состоянии */}
+                <div className={`h-full ${kbColSpanClass}`}>
                   <div
                     className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl h-full flex flex-col overflow-hidden relative transition-all duration-500 ease-in-out"
                     style={{ cursor: "pointer" }}
                     onClick={() => setIsKnowledgeExpanded((prev) => !prev)}
                   >
                     {isKnowledgeExpanded ? (
-                      // Развёрнутое состояние
-                      <div className="p-6 flex-1 flex flex-col">
+                      /* Развёрнутое состояние — шире + больше высоты (flex-1 + дополнительный padding) */
+                      <div className="p-8 flex-1 flex flex-col">
                         <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
                           <Upload className="w-5 h-5 text-red-400" />
                           База знаний
                         </h2>
-
-                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-700 hover:border-red-500/50 rounded-2xl py-8 cursor-pointer transition-colors">
-                          <Upload className="w-10 h-10 text-neutral-500 mb-3" />
+                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-700 hover:border-red-500/50 rounded-2xl py-12 cursor-pointer transition-colors flex-1">
+                          <Upload className="w-12 h-12 text-neutral-500 mb-4" />
                           <p className="text-sm text-neutral-400 text-center">
                             Перетащите файлы сюда
                             <br />
                             или нажмите для выбора
                           </p>
-                          <p className="text-xs text-neutral-500 mt-2">
+                          <p className="text-xs text-neutral-500 mt-3">
                             PDF, DOCX, TXT, XLSX, PPTX, JPG, PNG
                           </p>
                           <input multiple type="file" className="hidden" />
                         </label>
-
-                        <button className="mt-4 w-full py-3 bg-red-600 hover:bg-red-500 rounded-2xl font-medium transition-all">
+                        <button className="mt-6 w-full py-3 bg-red-600 hover:bg-red-500 rounded-2xl font-medium transition-all">
                           Загрузить файл
                         </button>
-
                         <button className="mt-3 w-full py-3 bg-[#131313] hover:bg-dark-700 border border-neutral-700 rounded-2xl text-sm font-medium transition-colors">
                           Посмотреть загруженные файлы
                         </button>
-
-                        <div className="mt-4 flex-1 overflow-y-auto space-y-2 pr-1">
+                        <div className="mt-6 flex-1 overflow-y-auto space-y-2 pr-1">
                           <div className="text-sm text-neutral-500 text-center py-4">
                             База знаний пока пустая
                           </div>
                         </div>
                       </div>
                     ) : (
-                      // Свёрнутое состояние: только иконка по центру, блок сохраняет высоту
+                      /* Суженное состояние — только иконка */
                       <div className="flex-1 flex items-center justify-center">
                         <Upload className="w-8 h-8 text-red-400" />
                       </div>
@@ -633,164 +618,177 @@ export default function SmmPage() {
                   </div>
                 </div>
 
-                {/* Правая колонка: Генерация контента */}
-                <div
-                  className={`transition-all duration-500 ease-in-out flex flex-col gap-4 h-full ${
-                    isKnowledgeExpanded ? "xl:col-span-4" : "xl:col-span-8"
-                  }`}
-                >
-                  {/* Фильтры генерации (без изменений) */}
+                {/* Правая колонка: Фильтры + Генерация — теперь ещё уже при развёрнутом KB */}
+                <div className={`flex flex-col gap-4 h-full ${rightColSpanClass}`}>
+                  {/* Фильтры генерации */}
                   <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl">
-                    {/* ... содержимое без изменений ... */}
-                    <button
-                      type="button"
-                      onClick={() => setIsGenerateFiltersOpen((prev) => !prev)}
-                      className="w-full h-14 px-5 flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-red-500/10 rounded-xl flex items-center justify-center">
-                          <Wand2 className="w-4 h-4 text-red-400" />
-                        </div>
-                        <div className="font-semibold">Фильтры генерации</div>
+                    {isKnowledgeExpanded ? (
+                      /* Суженное состояние фильтров — только иконка */
+                      <div className="h-14 flex items-center justify-center">
+                        <Wand2 className="w-8 h-8 text-red-400" />
                       </div>
-                      <span
-                        className={`text-neutral-500 text-xs transition-transform duration-300 ${
-                          isGenerateFiltersOpen ? "rotate-180" : ""
-                        }`}
-                      >
-                        ▼
-                      </span>
-                    </button>
-                    <div
-                      className={`overflow-hidden transition-all duration-300 ease-out ${
-                        isGenerateFiltersOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-                      }`}
-                    >
-                      <div className="p-5">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-sm text-neutral-400 mb-2">Тема</label>
-                            <input
-                              value={generateForm.theme}
-                              onChange={(e) =>
-                                setGenerateForm((prev) => ({ ...prev, theme: e.target.value }))
-                              }
-                              placeholder="Например: маркетинг"
-                              className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white placeholder:text-neutral-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm text-neutral-400 mb-2">Тон</label>
-                            <input
-                              value={generateForm.tone}
-                              onChange={(e) =>
-                                setGenerateForm((prev) => ({ ...prev, tone: e.target.value }))
-                              }
-                              placeholder="Например: дружелюбный"
-                              className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white placeholder:text-neutral-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm text-neutral-400 mb-2">Тип контента</label>
-                            <CustomSelect
-                              value={generateForm.content_type}
-                              onChange={(e) =>
-                                setGenerateForm((prev) => ({ ...prev, content_type: e.target.value }))
-                              }
-                              options={contentTypeOptions}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm text-neutral-400 mb-2">Длина</label>
-                            <CustomSelect
-                              value={generateForm.length}
-                              onChange={(e) =>
-                                setGenerateForm((prev) => ({ ...prev, length: e.target.value }))
-                              }
-                              options={lengthOptions}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm text-neutral-400 mb-2">Язык</label>
-                            <CustomSelect
-                              value={generateForm.language}
-                              onChange={(e) =>
-                                setGenerateForm((prev) => ({ ...prev, language: e.target.value }))
-                              }
-                              options={languageOptions}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm text-neutral-400 mb-2">Сразу публиковать</label>
-                            <CustomSelect
-                              value={generateForm.publish ? "yes" : "no"}
-                              onChange={(e) =>
-                                setGenerateForm((prev) => ({
-                                  ...prev,
-                                  publish: e.target.value === "yes",
-                                }))
-                              }
-                              options={[
-                                { value: "no", label: "Нет" },
-                                { value: "yes", label: "Да" },
-                              ]}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Основной блок генерации контента (без изменений) */}
-                  <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-6 lg:p-8 flex flex-col">
-                    {/* ... всё содержимое генерации остаётся без изменений ... */}
-                    <h2 className="text-2xl font-semibold">Генерация контента</h2>
-                    <p className="mt-2 text-neutral-400 text-sm">
-                      Создайте пост, отредактируйте текст, при необходимости перегенерируйте изображение и опубликуйте.
-                    </p>
-                    <form onSubmit={handleGenerateSubmit} className="mt-6">
-                      <div>
-                        <label className="block text-sm text-neutral-400 mb-2">Промпт</label>
-                        <textarea
-                          value={generateForm.prompt}
-                          onChange={(e) =>
-                            setGenerateForm((prev) => ({ ...prev, prompt: e.target.value }))
-                          }
-                          rows={5}
-                          required
-                          placeholder="Напиши пост про автоматизацию бизнеса"
-                          className="w-full bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 py-3 text-white placeholder:text-neutral-500"
-                        />
-                      </div>
-                      <div className="mt-4 mb-6 flex gap-4">
-                        <button
-                          type="submit"
-                          disabled={generateLoading}
-                          className="flex-1 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 px-6 py-3 rounded-2xl font-medium"
-                        >
-                          {generateLoading ? "Генерируем..." : "Сгенерировать"}
-                        </button>
+                    ) : (
+                      /* Полное состояние */
+                      <>
                         <button
                           type="button"
-                          className="flex-1 border border-neutral-700 hover:border-red-500/50 hover:text-white text-neutral-200 px-6 py-3 rounded-2xl font-medium transition-colors flex items-center justify-center gap-2"
+                          onClick={() => setIsGenerateFiltersOpen((prev) => !prev)}
+                          className="w-full h-14 px-5 flex items-center justify-between"
                         >
-                          <History className="w-4 h-4" />
-                          История
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-red-500/10 rounded-xl flex items-center justify-center">
+                              <Wand2 className="w-4 h-4 text-red-400" />
+                            </div>
+                            <div className="font-semibold">Фильтры генерации</div>
+                          </div>
+                          <span
+                            className={`text-neutral-500 text-xs transition-transform duration-300 ${
+                              isGenerateFiltersOpen ? "rotate-180" : ""
+                            }`}
+                          >
+                            ▼
+                          </span>
                         </button>
+                        <div
+                          className={`overflow-hidden transition-all duration-300 ease-out ${
+                            isGenerateFiltersOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                          }`}
+                        >
+                          <div className="p-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <div>
+                                <label className="block text-sm text-neutral-400 mb-2">Тема</label>
+                                <input
+                                  value={generateForm.theme}
+                                  onChange={(e) =>
+                                    setGenerateForm((prev) => ({ ...prev, theme: e.target.value }))
+                                  }
+                                  placeholder="Например: маркетинг"
+                                  className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white placeholder:text-neutral-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm text-neutral-400 mb-2">Тон</label>
+                                <input
+                                  value={generateForm.tone}
+                                  onChange={(e) =>
+                                    setGenerateForm((prev) => ({ ...prev, tone: e.target.value }))
+                                  }
+                                  placeholder="Например: дружелюбный"
+                                  className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white placeholder:text-neutral-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm text-neutral-400 mb-2">Тип контента</label>
+                                <CustomSelect
+                                  value={generateForm.content_type}
+                                  onChange={(e) =>
+                                    setGenerateForm((prev) => ({ ...prev, content_type: e.target.value }))
+                                  }
+                                  options={contentTypeOptions}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm text-neutral-400 mb-2">Длина</label>
+                                <CustomSelect
+                                  value={generateForm.length}
+                                  onChange={(e) =>
+                                    setGenerateForm((prev) => ({ ...prev, length: e.target.value }))
+                                  }
+                                  options={lengthOptions}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm text-neutral-400 mb-2">Язык</label>
+                                <CustomSelect
+                                  value={generateForm.language}
+                                  onChange={(e) =>
+                                    setGenerateForm((prev) => ({ ...prev, language: e.target.value }))
+                                  }
+                                  options={languageOptions}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm text-neutral-400 mb-2">Сразу публиковать</label>
+                                <CustomSelect
+                                  value={generateForm.publish ? "yes" : "no"}
+                                  onChange={(e) =>
+                                    setGenerateForm((prev) => ({
+                                      ...prev,
+                                      publish: e.target.value === "yes",
+                                    }))
+                                  }
+                                  options={[
+                                    { value: "no", label: "Нет" },
+                                    { value: "yes", label: "Да" },
+                                  ]}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Основной блок генерации контента */}
+                  <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-6 lg:p-8 flex flex-col">
+                    {isKnowledgeExpanded ? (
+                      /* Суженное состояние — увеличенная высота + больший иконка */
+                      <div className="flex-1 flex items-center justify-center min-h-[280px]">
+                        <Wand2 className="w-12 h-12 text-red-400" />
                       </div>
-                    </form>
-                    {/* ... (остальной код генерации: ошибки, результат, редактирование, публикация) ... */}
-                    {/* Для краткости опущен, в реальном коде должен быть полностью */}
+                    ) : (
+                      /* Полное состояние */
+                      <>
+                        <h2 className="text-2xl font-semibold">Генерация контента</h2>
+                        <p className="mt-2 text-neutral-400 text-sm">
+                          Создайте пост, отредактируйте текст, при необходимости перегенерируйте изображение и опубликуйте.
+                        </p>
+                        <form onSubmit={handleGenerateSubmit} className="mt-6">
+                          <div>
+                            <label className="block text-sm text-neutral-400 mb-2">Промпт</label>
+                            <textarea
+                              value={generateForm.prompt}
+                              onChange={(e) =>
+                                setGenerateForm((prev) => ({ ...prev, prompt: e.target.value }))
+                              }
+                              rows={5}
+                              required
+                              placeholder="Напиши пост про автоматизацию бизнеса"
+                              className="w-full bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 py-3 text-white placeholder:text-neutral-500"
+                            />
+                          </div>
+                          <div className="mt-4 mb-6 flex gap-4">
+                            <button
+                              type="submit"
+                              disabled={generateLoading}
+                              className="flex-1 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 px-6 py-3 rounded-2xl font-medium"
+                            >
+                              {generateLoading ? "Генерируем..." : "Сгенерировать"}
+                            </button>
+                            <button
+                              type="button"
+                              className="flex-1 border border-neutral-700 hover:border-red-500/50 hover:text-white text-neutral-200 px-6 py-3 rounded-2xl font-medium transition-colors flex items-center justify-center gap-2"
+                            >
+                              <History className="w-4 h-4" />
+                              История
+                            </button>
+                          </div>
+                        </form>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* AI-помощник (без изменений) */}
-          <div className="xl:col-span-4">
+          {/* Боковая панель AI-помощник + переключение режима — теперь ещё уже при развёрнутом KB */}
+          <div className={sideColSpanClass}>
             <div className="flex flex-col h-full">
               {mode === "analyze" ? (
+                /* Анализ — без изменений */
                 <div className="flex flex-col h-full gap-4">
                   <button
                     type="button"
@@ -840,54 +838,75 @@ export default function SmmPage() {
                   </div>
                 </div>
               ) : (
+                /* Генерация — collapsed / full */
                 <div className="flex flex-col h-full gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setMode("analyze")}
-                    className="w-full py-4 rounded-3xl bg-red-600 hover:bg-red-500 transition-colors flex items-center justify-center gap-3"
-                  >
-                    <Wand2 className="w-5 h-5" />
-                    <span className="font-medium">Анализ VK-групп</span>
-                  </button>
-                  {assistantOpen && (
-                    <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-4 flex flex-col">
-                      <div className="text-sm text-neutral-400 mb-3">AI-помощник</div>
-                      <div className="flex-1 space-y-3 overflow-y-auto pr-1 custom-scroll">
-                        {assistantMessages.map((message) => (
-                          <div
-                            key={message.id}
-                            className={`rounded-2xl px-4 py-3 text-sm ${
-                              message.type === "user"
-                                ? "bg-red-600 text-white ml-6"
-                                : "bg-neutral-800 text-neutral-200 mr-6"
-                            }`}
-                          >
-                            {message.text}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex gap-2 mt-4 pt-2 border-t border-neutral-800">
-                        <input
-                          value={assistantInput}
-                          onChange={(e) => setAssistantInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              sendAssistantMessage();
-                            }
-                          }}
-                          placeholder="Спросите про SMM"
-                          className="flex-1 bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 py-2.5 text-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={sendAssistantMessage}
-                          className="w-10 h-10 rounded-2xl bg-red-600 hover:bg-red-500 flex items-center justify-center"
-                        >
-                          <Send className="w-4 h-4" />
-                        </button>
-                      </div>
+                  {/* Кнопка переключения на анализ */}
+                  {isKnowledgeExpanded ? (
+                    <div
+                      onClick={() => setMode("analyze")}
+                      className="w-full h-14 rounded-3xl bg-red-600 hover:bg-red-500 transition-colors flex items-center justify-center cursor-pointer"
+                    >
+                      <Wand2 className="w-5 h-5" />
                     </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setMode("analyze")}
+                      className="w-full py-4 rounded-3xl bg-red-600 hover:bg-red-500 transition-colors flex items-center justify-center gap-3"
+                    >
+                      <Wand2 className="w-5 h-5" />
+                      <span className="font-medium">Анализ VK-групп</span>
+                    </button>
+                  )}
+
+                  {/* AI-помощник — увеличенная высота в collapsed */}
+                  {assistantOpen && (
+                    isKnowledgeExpanded ? (
+                      /* Суженное состояние — увеличенная высота + больший иконка */
+                      <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-4 flex items-center justify-center min-h-[280px]">
+                        <MessageCircle className="w-12 h-12 text-red-400" />
+                      </div>
+                    ) : (
+                      /* Полное состояние */
+                      <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-4 flex flex-col">
+                        <div className="text-sm text-neutral-400 mb-3">AI-помощник</div>
+                        <div className="flex-1 space-y-3 overflow-y-auto pr-1 custom-scroll">
+                          {assistantMessages.map((message) => (
+                            <div
+                              key={message.id}
+                              className={`rounded-2xl px-4 py-3 text-sm ${
+                                message.type === "user"
+                                  ? "bg-red-600 text-white ml-6"
+                                  : "bg-neutral-800 text-neutral-200 mr-6"
+                              }`}
+                            >
+                              {message.text}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-2 mt-4 pt-2 border-t border-neutral-800">
+                          <input
+                            value={assistantInput}
+                            onChange={(e) => setAssistantInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                sendAssistantMessage();
+                              }
+                            }}
+                            placeholder="Спросите про SMM"
+                            className="flex-1 bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 py-2.5 text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={sendAssistantMessage}
+                            className="w-10 h-10 rounded-2xl bg-red-600 hover:bg-red-500 flex items-center justify-center"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )
                   )}
                 </div>
               )}
