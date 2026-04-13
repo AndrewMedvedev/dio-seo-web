@@ -10,8 +10,10 @@ import {
   Wand2,
   History,
   ChevronDown,
+  ChevronLeft,
   Check,
-  Upload
+  Upload,
+  X,
 } from "lucide-react";
 import { SmmApi } from "../api/Smm";
 import { createPortal } from "react-dom";
@@ -37,13 +39,13 @@ const languageOptions = [
     value: "ru",
     label: "Русский",
     flag: "🇷🇺",
-    description: "Русский язык"
+    description: "Русский язык",
   },
   {
     value: "en",
     label: "English",
     flag: "🇬🇧",
-    description: "Английский язык"
+    description: "Английский язык",
   },
 ];
 
@@ -80,7 +82,9 @@ const formatDate = (unixTs) => {
 function MetricsCard({ label, value }) {
   return (
     <div className="bg-dark-800 border border-neutral-800 rounded-2xl p-4">
-      <div className="text-xs uppercase tracking-wider text-neutral-500">{label}</div>
+      <div className="text-xs uppercase tracking-wider text-neutral-500">
+        {label}
+      </div>
       <div className="mt-2 text-2xl font-bold text-white">{value}</div>
     </div>
   );
@@ -231,11 +235,28 @@ export default function SmmPage() {
   ]);
   const [isKnowledgeExpanded, setIsKnowledgeExpanded] = useState(false);
 
+  // === СОСТОЯНИЯ ДЛЯ БАЗЫ ЗНАНИЙ ===
+  const fileInputRef = useRef(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [showFileListModal, setShowFileListModal] = useState(false);
+
   // === ОБНОВЛЁННЫЕ КЛАССЫ ДЛЯ ДИНАМИЧЕСКОЙ РАЗВЁРНУТОЙ РАСКЛАДКИ ===
-  const mainColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-10" : "xl:col-span-8";
-  const sideColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-2" : "xl:col-span-4";
-  const kbColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-10" : "xl:col-span-2";
-  const rightColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-2" : "xl:col-span-10";
+  const mainColSpanClass =
+    mode === "generate" && isKnowledgeExpanded
+      ? "xl:col-span-10"
+      : "xl:col-span-8";
+  const sideColSpanClass =
+    mode === "generate" && isKnowledgeExpanded
+      ? "xl:col-span-2"
+      : "xl:col-span-4";
+  const kbColSpanClass =
+    mode === "generate" && isKnowledgeExpanded
+      ? "xl:col-span-10"
+      : "xl:col-span-2";
+  const rightColSpanClass =
+    mode === "generate" && isKnowledgeExpanded
+      ? "xl:col-span-2"
+      : "xl:col-span-10";
 
   const imageDataUrl = useMemo(() => {
     if (!generateResult?.generated_image_base64) return "";
@@ -329,7 +350,7 @@ export default function SmmPage() {
               generated_image_base64: data.generated_image_base64,
               generated_image_mime_type: data.generated_image_mime_type,
             }
-          : prev,
+          : prev
       );
     } catch (error) {
       setRegenerateImageError(error.message);
@@ -358,7 +379,7 @@ export default function SmmPage() {
               post_id: result?.post_id ?? prev.post_id,
               owner_id: result?.owner_id ?? prev.owner_id,
             }
-          : prev,
+          : prev
       );
       setPublishSuccess("Пост успешно опубликован.");
     } catch (error) {
@@ -366,6 +387,24 @@ export default function SmmPage() {
     } finally {
       setPublishLoading(false);
     }
+  };
+
+  // === ОБРАБОТЧИКИ ФАЙЛОВ ===
+  const handleFileSelect = (event) => {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+    const newFiles = files.map((file) => ({
+      id: `${Date.now()}-${file.name}`,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    }));
+    setUploadedFiles((prev) => [...prev, ...newFiles]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const openFileDialog = () => {
+    fileInputRef.current?.click();
   };
 
   const analyzeTopPosts = analyzeResult?.metrics?.top_posts || [];
@@ -401,27 +440,43 @@ export default function SmmPage() {
                   </button>
                   <div
                     className={`overflow-hidden transition-all duration-300 ease-out ${
-                      isFiltersOpen ? "mt-4 max-h-64 opacity-100" : "mt-0 max-h-0 opacity-0"
+                      isFiltersOpen
+                        ? "mt-4 max-h-64 opacity-100"
+                        : "mt-0 max-h-0 opacity-0"
                     }`}
                   >
                     <div className="px-5 pb-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm text-neutral-400 mb-2">Лимит постов</label>
+                          <label className="block text-sm text-neutral-400 mb-2">
+                            Лимит постов
+                          </label>
                           <input
                             type="number"
                             min="1"
                             max="100"
                             value={analyzeForm.post_limit}
-                            onChange={(e) => setAnalyzeForm((prev) => ({ ...prev, post_limit: e.target.value }))}
+                            onChange={(e) =>
+                              setAnalyzeForm((prev) => ({
+                                ...prev,
+                                post_limit: e.target.value,
+                              }))
+                            }
                             className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm text-neutral-400 mb-2">Язык ответа</label>
+                          <label className="block text-sm text-neutral-400 mb-2">
+                            Язык ответа
+                          </label>
                           <CustomSelect
                             value={analyzeForm.language}
-                            onChange={(e) => setAnalyzeForm((prev) => ({ ...prev, language: e.target.value }))}
+                            onChange={(e) =>
+                              setAnalyzeForm((prev) => ({
+                                ...prev,
+                                language: e.target.value,
+                              }))
+                            }
                             options={languageOptions}
                           />
                         </div>
@@ -433,7 +488,8 @@ export default function SmmPage() {
                 <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 lg:p-10 overflow-y-auto flex flex-col">
                   <h2 className="text-2xl font-semibold">Анализ VK-группы</h2>
                   <p className="mt-2 text-neutral-400 text-sm">
-                    Введите ссылку или идентификатор группы, затем получите разбор метрик, рекомендаций и конкурентов.
+                    Введите ссылку или идентификатор группы, затем получите
+                    разбор метрик, рекомендаций и конкурентов.
                   </p>
                   <form onSubmit={handleAnalyzeSubmit} className="mt-6 space-y-4">
                     <div>
@@ -444,7 +500,10 @@ export default function SmmPage() {
                         <input
                           value={analyzeForm.source}
                           onChange={(e) =>
-                            setAnalyzeForm((prev) => ({ ...prev, source: e.target.value }))
+                            setAnalyzeForm((prev) => ({
+                              ...prev,
+                              source: e.target.value,
+                            }))
                           }
                           required
                           placeholder="https://vk.com/diocon"
@@ -455,7 +514,9 @@ export default function SmmPage() {
                           disabled={analyzeLoading}
                           className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 px-10 py-4 rounded-2xl font-medium transition-colors whitespace-nowrap"
                         >
-                          {analyzeLoading ? "Анализируем..." : "Запустить анализ"}
+                          {analyzeLoading
+                            ? "Анализируем..."
+                            : "Запустить анализ"}
                         </button>
                         <button
                           type="button"
@@ -475,72 +536,134 @@ export default function SmmPage() {
                   {analyzeResult ? (
                     <div className="mt-8 space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        <MetricsCard label="Постов проанализировано" value={formatNumber(analyzeResult.metrics.total_posts_analyzed)} />
-                        <MetricsCard label="Средние просмотры" value={formatNumber(analyzeResult.metrics.average_views)} />
-                        <MetricsCard label="Средние лайки" value={formatNumber(analyzeResult.metrics.average_likes)} />
-                        <MetricsCard label="Средние комментарии" value={formatNumber(analyzeResult.metrics.average_comments)} />
-                        <MetricsCard label="Постов в день" value={analyzeResult.metrics.posts_per_day} />
+                        <MetricsCard
+                          label="Постов проанализировано"
+                          value={formatNumber(
+                            analyzeResult.metrics.total_posts_analyzed
+                          )}
+                        />
+                        <MetricsCard
+                          label="Средние просмотры"
+                          value={formatNumber(
+                            analyzeResult.metrics.average_views
+                          )}
+                        />
+                        <MetricsCard
+                          label="Средние лайки"
+                          value={formatNumber(
+                            analyzeResult.metrics.average_likes
+                          )}
+                        />
+                        <MetricsCard
+                          label="Средние комментарии"
+                          value={formatNumber(
+                            analyzeResult.metrics.average_comments
+                          )}
+                        />
+                        <MetricsCard
+                          label="Постов в день"
+                          value={analyzeResult.metrics.posts_per_day}
+                        />
                       </div>
                       <div className="bg-dark-800 border border-neutral-800 rounded-2xl p-5">
-                        <div className="text-sm text-neutral-500 mb-2">Сводка</div>
-                        <p className="text-neutral-200 leading-relaxed">{analyzeResult.ai.summary || "Сводка пока не предоставлена."}</p>
+                        <div className="text-sm text-neutral-500 mb-2">
+                          Сводка
+                        </div>
+                        <p className="text-neutral-200 leading-relaxed">
+                          {analyzeResult.ai.summary ||
+                            "Сводка пока не предоставлена."}
+                        </p>
                       </div>
                       <div className="bg-dark-800 border border-neutral-800 rounded-2xl p-5">
-                        <div className="text-sm text-neutral-500 mb-2">Теги поиска конкурентов</div>
+                        <div className="text-sm text-neutral-500 mb-2">
+                          Теги поиска конкурентов
+                        </div>
                         <div className="flex flex-wrap gap-2">
                           {analyzeResult.ai.search_tags.length ? (
                             analyzeResult.ai.search_tags.map((tag) => (
-                              <span key={tag} className="px-3 py-1 rounded-full text-xs bg-red-500/15 border border-red-500/30 text-red-200">
+                              <span
+                                key={tag}
+                                className="px-3 py-1 rounded-full text-xs bg-red-500/15 border border-red-500/30 text-red-200"
+                              >
                                 {tag}
                               </span>
                             ))
                           ) : (
-                            <span className="text-neutral-500 text-sm">Теги не найдены</span>
+                            <span className="text-neutral-500 text-sm">
+                              Теги не найдены
+                            </span>
                           )}
                         </div>
                       </div>
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div className="bg-dark-800 border border-neutral-800 rounded-2xl p-5">
-                          <div className="text-sm text-neutral-500 mb-2">Интересы аудитории</div>
+                          <div className="text-sm text-neutral-500 mb-2">
+                            Интересы аудитории
+                          </div>
                           {analyzeResult.ai.audience_interests.length ? (
                             <ul className="list-disc pl-5 space-y-1 text-neutral-200">
-                              {analyzeResult.ai.audience_interests.map((item) => (
-                                <li key={item}>{item}</li>
-                              ))}
+                              {analyzeResult.ai.audience_interests.map(
+                                (item) => (
+                                  <li key={item}>{item}</li>
+                                )
+                              )}
                             </ul>
                           ) : (
-                            <span className="text-neutral-500 text-sm">Нет данных</span>
+                            <span className="text-neutral-500 text-sm">
+                              Нет данных
+                            </span>
                           )}
                         </div>
                         <div className="bg-dark-800 border border-neutral-800 rounded-2xl p-5">
-                          <div className="text-sm text-neutral-500 mb-2">Активность аудитории</div>
+                          <div className="text-sm text-neutral-500 mb-2">
+                            Активность аудитории
+                          </div>
                           {analyzeResult.ai.audience_activity.length ? (
                             <ul className="list-disc pl-5 space-y-1 text-neutral-200">
-                              {analyzeResult.ai.audience_activity.map((item) => (
-                                <li key={item}>{item}</li>
-                              ))}
+                              {analyzeResult.ai.audience_activity.map(
+                                (item) => (
+                                  <li key={item}>{item}</li>
+                                )
+                              )}
                             </ul>
                           ) : (
-                            <span className="text-neutral-500 text-sm">Нет данных</span>
+                            <span className="text-neutral-500 text-sm">
+                              Нет данных
+                            </span>
                           )}
                         </div>
                       </div>
                       <div className="bg-dark-800 border border-neutral-800 rounded-2xl p-5 overflow-x-auto">
-                        <div className="text-sm text-neutral-500 mb-3">Топ постов</div>
+                        <div className="text-sm text-neutral-500 mb-3">
+                          Топ постов
+                        </div>
                         {analyzeTopPosts.length ? (
                           <table className="w-full text-sm">
                             <thead className="text-neutral-400">
                               <tr className="border-b border-neutral-800">
-                                <th className="py-2 text-left font-medium">ID</th>
-                                <th className="py-2 text-left font-medium">Дата</th>
-                                <th className="py-2 text-left font-medium">Просмотры</th>
-                                <th className="py-2 text-left font-medium">Лайки</th>
-                                <th className="py-2 text-left font-medium">Комментарии</th>
+                                <th className="py-2 text-left font-medium">
+                                  ID
+                                </th>
+                                <th className="py-2 text-left font-medium">
+                                  Дата
+                                </th>
+                                <th className="py-2 text-left font-medium">
+                                  Просмотры
+                                </th>
+                                <th className="py-2 text-left font-medium">
+                                  Лайки
+                                </th>
+                                <th className="py-2 text-left font-medium">
+                                  Комментарии
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
                               {analyzeTopPosts.map((post) => (
-                                <tr key={`${post.post_id}-${post.date}`} className="border-b border-neutral-800/80">
+                                <tr
+                                  key={`${post.post_id}-${post.date}`}
+                                  className="border-b border-neutral-800/80"
+                                >
                                   <td className="py-2">{post.post_id}</td>
                                   <td className="py-2">{formatDate(post.date)}</td>
                                   <td className="py-2">{formatNumber(post.views)}</td>
@@ -551,7 +674,9 @@ export default function SmmPage() {
                             </tbody>
                           </table>
                         ) : (
-                          <div className="text-sm text-neutral-500">Топ постов недоступен.</div>
+                          <div className="text-sm text-neutral-500">
+                            Топ постов недоступен.
+                          </div>
                         )}
                       </div>
                     </div>
@@ -561,7 +686,9 @@ export default function SmmPage() {
                         <div>
                           <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
                           <p className="text-lg">Запустите анализ группы</p>
-                          <p className="text-sm mt-2 opacity-75">Результат появится здесь</p>
+                          <p className="text-sm mt-2 opacity-75">
+                            Результат появится здесь
+                          </p>
                         </div>
                       </div>
                     )
@@ -575,16 +702,38 @@ export default function SmmPage() {
                 <div className={`h-full ${kbColSpanClass}`}>
                   <div
                     className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl h-full flex flex-col overflow-hidden relative transition-all duration-500 ease-in-out"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => setIsKnowledgeExpanded((prev) => !prev)}
+                    style={{ cursor: isKnowledgeExpanded ? "default" : "pointer" }}
+                    onClick={
+                      isKnowledgeExpanded
+                        ? undefined
+                        : () => setIsKnowledgeExpanded(true)
+                    }
                   >
                     {isKnowledgeExpanded ? (
                       <div className="p-8 flex-1 flex flex-col">
-                        <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                          <Upload className="w-5 h-5 text-red-400" />
-                          База знаний
-                        </h2>
-                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-700 hover:border-red-500/50 rounded-2xl py-12 cursor-pointer transition-colors flex-1">
+                        {/* Заголовок с кнопкой закрытия */}
+                        <div className="flex items-center justify-between mb-4">
+                          <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <Upload className="w-5 h-5 text-red-400" />
+                            База знаний
+                          </h2>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsKnowledgeExpanded(false);
+                            }}
+                            className="p-1 rounded-lg hover:bg-neutral-700/50 transition-colors"
+                            aria-label="Свернуть базу знаний"
+                          >
+                            <ChevronLeft className="w-5 h-5 text-neutral-400" />
+                          </button>
+                        </div>
+
+                        {/* Зона drag & drop */}
+                        <label
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-700 hover:border-red-500/50 rounded-2xl py-12 cursor-pointer transition-colors flex-1"
+                        >
                           <Upload className="w-12 h-12 text-neutral-500 mb-4" />
                           <p className="text-sm text-neutral-400 text-center">
                             Перетащите файлы сюда
@@ -594,23 +743,62 @@ export default function SmmPage() {
                           <p className="text-xs text-neutral-500 mt-3">
                             PDF, DOCX, TXT, XLSX, PPTX, JPG, PNG
                           </p>
-                          <input multiple type="file" className="hidden" />
+                          <input
+                            ref={fileInputRef}
+                            multiple
+                            type="file"
+                            className="hidden"
+                            onChange={handleFileSelect}
+                            onClick={(e) => e.stopPropagation()}
+                          />
                         </label>
-                        <button className="mt-6 w-full py-3 bg-red-600 hover:bg-red-500 rounded-2xl font-medium transition-all">
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openFileDialog();
+                          }}
+                          className="mt-6 w-full py-3 bg-red-600 hover:bg-red-500 rounded-2xl font-medium transition-all"
+                        >
                           Загрузить файл
                         </button>
-                        <button className="mt-3 w-full py-3 bg-[#131313] hover:bg-dark-700 border border-neutral-700 rounded-2xl text-sm font-medium transition-colors">
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowFileListModal(true);
+                          }}
+                          className="mt-3 w-full py-3 bg-[#131313] hover:bg-dark-700 border border-neutral-700 rounded-2xl text-sm font-medium transition-colors"
+                        >
                           Посмотреть загруженные файлы
                         </button>
+
+                        {/* Список файлов */}
                         <div className="mt-6 flex-1 overflow-y-auto space-y-2 pr-1">
-                          <div className="text-sm text-neutral-500 text-center py-4">
-                            База знаний пока пустая
-                          </div>
+                          {uploadedFiles.length === 0 ? (
+                            <div className="text-sm text-neutral-500 text-center py-4">
+                              База знаний пока пустая
+                            </div>
+                          ) : (
+                            uploadedFiles.map((file) => (
+                              <div
+                                key={file.id}
+                                className="bg-dark-800/50 border border-neutral-800 rounded-xl px-3 py-2 text-sm flex items-center justify-between"
+                              >
+                                <span className="truncate">{file.name}</span>
+                                <span className="text-xs text-neutral-500">
+                                  {(file.size / 1024).toFixed(0)} KB
+                                </span>
+                              </div>
+                            ))
+                          )}
                         </div>
                       </div>
                     ) : (
-                      <div className="flex-1 flex items-center justify-center">
+                      <div className="flex-1 flex flex-col items-center justify-center gap-2">
                         <Upload className="w-8 h-8 text-red-400" />
+                        <span className="text-xs text-neutral-400">База знаний</span>
+                        {/* Стрелка убрана */}
                       </div>
                     )}
                   </div>
@@ -619,12 +807,14 @@ export default function SmmPage() {
                 {/* Правая колонка — улучшенные collapsed-блоки */}
                 <div className={`flex flex-col gap-4 h-full ${rightColSpanClass}`}>
                   {/* Фильтры генерации — collapsed */}
-                  <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl">
+                  <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl overflow-hidden">
                     {isKnowledgeExpanded ? (
                       <div className="group relative p-5 flex flex-col items-center justify-center gap-2 hover:bg-neutral-800/70 transition-all rounded-3xl min-h-[92px]">
                         <Wand2 className="w-9 h-9 text-red-400 group-hover:scale-110 transition-transform" />
                         <div className="text-xs font-medium text-neutral-400 text-center leading-tight">
-                          Фильтры<br />генерации
+                          Фильтры
+                          <br />
+                          генерации
                         </div>
                       </div>
                     ) : (
@@ -632,14 +822,18 @@ export default function SmmPage() {
                       <>
                         <button
                           type="button"
-                          onClick={() => setIsGenerateFiltersOpen((prev) => !prev)}
+                          onClick={() =>
+                            setIsGenerateFiltersOpen((prev) => !prev)
+                          }
                           className="w-full h-14 px-5 flex items-center justify-between"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-red-500/10 rounded-xl flex items-center justify-center">
                               <Wand2 className="w-4 h-4 text-red-400" />
                             </div>
-                            <div className="font-semibold">Фильтры генерации</div>
+                            <div className="font-semibold">
+                              Фильтры генерации
+                            </div>
                           </div>
                           <span
                             className={`text-neutral-500 text-xs transition-transform duration-300 ${
@@ -651,65 +845,94 @@ export default function SmmPage() {
                         </button>
                         <div
                           className={`overflow-hidden transition-all duration-300 ease-out ${
-                            isGenerateFiltersOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                            isGenerateFiltersOpen
+                              ? "max-h-96 opacity-100"
+                              : "max-h-0 opacity-0"
                           }`}
                         >
                           <div className="p-5">
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                               <div>
-                                <label className="block text-sm text-neutral-400 mb-2">Тема</label>
+                                <label className="block text-sm text-neutral-400 mb-2">
+                                  Тема
+                                </label>
                                 <input
                                   value={generateForm.theme}
                                   onChange={(e) =>
-                                    setGenerateForm((prev) => ({ ...prev, theme: e.target.value }))
+                                    setGenerateForm((prev) => ({
+                                      ...prev,
+                                      theme: e.target.value,
+                                    }))
                                   }
                                   placeholder="Например: маркетинг"
                                   className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white placeholder:text-neutral-500"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm text-neutral-400 mb-2">Тон</label>
+                                <label className="block text-sm text-neutral-400 mb-2">
+                                  Тон
+                                </label>
                                 <input
                                   value={generateForm.tone}
                                   onChange={(e) =>
-                                    setGenerateForm((prev) => ({ ...prev, tone: e.target.value }))
+                                    setGenerateForm((prev) => ({
+                                      ...prev,
+                                      tone: e.target.value,
+                                    }))
                                   }
                                   placeholder="Например: дружелюбный"
                                   className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white placeholder:text-neutral-500"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm text-neutral-400 mb-2">Тип контента</label>
+                                <label className="block text-sm text-neutral-400 mb-2">
+                                  Тип контента
+                                </label>
                                 <CustomSelect
                                   value={generateForm.content_type}
                                   onChange={(e) =>
-                                    setGenerateForm((prev) => ({ ...prev, content_type: e.target.value }))
+                                    setGenerateForm((prev) => ({
+                                      ...prev,
+                                      content_type: e.target.value,
+                                    }))
                                   }
                                   options={contentTypeOptions}
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm text-neutral-400 mb-2">Длина</label>
+                                <label className="block text-sm text-neutral-400 mb-2">
+                                  Длина
+                                </label>
                                 <CustomSelect
                                   value={generateForm.length}
                                   onChange={(e) =>
-                                    setGenerateForm((prev) => ({ ...prev, length: e.target.value }))
+                                    setGenerateForm((prev) => ({
+                                      ...prev,
+                                      length: e.target.value,
+                                    }))
                                   }
                                   options={lengthOptions}
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm text-neutral-400 mb-2">Язык</label>
+                                <label className="block text-sm text-neutral-400 mb-2">
+                                  Язык
+                                </label>
                                 <CustomSelect
                                   value={generateForm.language}
                                   onChange={(e) =>
-                                    setGenerateForm((prev) => ({ ...prev, language: e.target.value }))
+                                    setGenerateForm((prev) => ({
+                                      ...prev,
+                                      language: e.target.value,
+                                    }))
                                   }
                                   options={languageOptions}
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm text-neutral-400 mb-2">Сразу публиковать</label>
+                                <label className="block text-sm text-neutral-400 mb-2">
+                                  Сразу публиковать
+                                </label>
                                 <CustomSelect
                                   value={generateForm.publish ? "yes" : "no"}
                                   onChange={(e) =>
@@ -732,29 +955,39 @@ export default function SmmPage() {
                   </div>
 
                   {/* Основной блок генерации — collapsed с улучшенным UX */}
-                  <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-6 flex flex-col">
+                  <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl flex flex-col overflow-hidden">
                     {isKnowledgeExpanded ? (
-                      <div className="group flex-1 flex flex-col items-center justify-center gap-4 hover:bg-neutral-800/70 transition-all rounded-3xl min-h-[200px]">
-                        <Wand2 className="w-14 h-14 text-red-400 group-hover:scale-110 transition-transform" />
-                        <div className="text-sm font-semibold text-neutral-200 text-center">Генерация контента</div>
+                      <div className="group flex-1 p-6 flex flex-col items-center justify-center gap-4 hover:bg-neutral-800/70 transition-all min-h-[200px] rounded-3xl">
+                        <Image className="w-14 h-14 text-red-400 group-hover:scale-110 transition-transform" />
+                        <div className="text-sm font-semibold text-neutral-200 text-center">
+                          Генерация контента
+                        </div>
                         <div className="text-xs text-neutral-500 text-center max-w-[160px]">
                           Промпт + генерация поста
                         </div>
                       </div>
                     ) : (
                       /* Полное состояние генерации */
-                      <>
-                        <h2 className="text-2xl font-semibold">Генерация контента</h2>
+                      <div className="p-6 flex flex-col flex-1">
+                        <h2 className="text-2xl font-semibold">
+                          Генерация контента
+                        </h2>
                         <p className="mt-2 text-neutral-400 text-sm">
-                          Создайте пост, отредактируйте текст, при необходимости перегенерируйте изображение и опубликуйте.
+                          Создайте пост, отредактируйте текст, при необходимости
+                          перегенерируйте изображение и опубликуйте.
                         </p>
                         <form onSubmit={handleGenerateSubmit} className="mt-6">
                           <div>
-                            <label className="block text-sm text-neutral-400 mb-2">Промпт</label>
+                            <label className="block text-sm text-neutral-400 mb-2">
+                              Промпт
+                            </label>
                             <textarea
                               value={generateForm.prompt}
                               onChange={(e) =>
-                                setGenerateForm((prev) => ({ ...prev, prompt: e.target.value }))
+                                setGenerateForm((prev) => ({
+                                  ...prev,
+                                  prompt: e.target.value,
+                                }))
                               }
                               rows={5}
                               required
@@ -768,7 +1001,9 @@ export default function SmmPage() {
                               disabled={generateLoading}
                               className="flex-1 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 px-6 py-3 rounded-2xl font-medium"
                             >
-                              {generateLoading ? "Генерируем..." : "Сгенерировать"}
+                              {generateLoading
+                                ? "Генерируем..."
+                                : "Сгенерировать"}
                             </button>
                             <button
                               type="button"
@@ -779,7 +1014,7 @@ export default function SmmPage() {
                             </button>
                           </div>
                         </form>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -802,7 +1037,9 @@ export default function SmmPage() {
                     <span className="font-medium">Генерация контента</span>
                   </button>
                   <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-4 flex flex-col">
-                    <div className="text-sm text-neutral-400 mb-3">AI-помощник</div>
+                    <div className="text-sm text-neutral-400 mb-3">
+                      AI-помощник
+                    </div>
                     <div className="flex-1 space-y-3 overflow-y-auto pr-1 custom-scroll">
                       {assistantMessages.map((message) => (
                         <div
@@ -849,9 +1086,11 @@ export default function SmmPage() {
                       onClick={() => setMode("analyze")}
                       className="group bg-red-600 hover:bg-red-500 transition-all rounded-3xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer min-h-[92px]"
                     >
-                      <Wand2 className="w-8 h-8 text-white group-hover:scale-110 transition-transform" />
+                      <Bot className="w-8 h-8 text-white group-hover:scale-110 transition-transform" />
                       <div className="text-xs font-medium text-white text-center">
-                        Анализ<br />VK-групп
+                        Анализ
+                        <br />
+                        VK-групп
                       </div>
                     </div>
                   ) : (
@@ -868,16 +1107,20 @@ export default function SmmPage() {
                   {/* AI-помощник — collapsed с улучшенным UX */}
                   {assistantOpen && (
                     isKnowledgeExpanded ? (
-                      <div className="group flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-6 flex flex-col items-center justify-center gap-4 hover:bg-neutral-800/70 transition-all min-h-[200px]">
+                      <div className="group flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-6 flex flex-col items-center justify-center gap-4 hover:bg-neutral-800/70 transition-all min-h-[200px] overflow-hidden rounded-3xl">
                         <MessageCircle className="w-14 h-14 text-red-400 group-hover:scale-110 transition-transform" />
-                        <div className="text-sm font-semibold text-neutral-200 text-center">AI-помощник</div>
+                        <div className="text-sm font-semibold text-neutral-200 text-center">
+                          AI-помощник
+                        </div>
                         <div className="text-xs text-neutral-500 text-center max-w-[160px]">
                           Советы по контенту
                         </div>
                       </div>
                     ) : (
                       <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-4 flex flex-col">
-                        <div className="text-sm text-neutral-400 mb-3">AI-помощник</div>
+                        <div className="text-sm text-neutral-400 mb-3">
+                          AI-помощник
+                        </div>
                         <div className="flex-1 space-y-3 overflow-y-auto pr-1 custom-scroll">
                           {assistantMessages.map((message) => (
                             <div
@@ -922,6 +1165,53 @@ export default function SmmPage() {
           </div>
         </div>
       </div>
+
+      {/* Модальное окно со списком загруженных файлов */}
+      {showFileListModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-dark-800 border border-neutral-700 rounded-3xl w-full max-w-lg p-6 shadow-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Загруженные файлы</h3>
+                <button
+                  onClick={() => setShowFileListModal(false)}
+                  className="p-1 rounded-full hover:bg-neutral-700 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
+                {uploadedFiles.length === 0 ? (
+                  <p className="text-neutral-400 text-center py-8">
+                    Нет загруженных файлов
+                  </p>
+                ) : (
+                  uploadedFiles.map((file) => (
+                    <div
+                      key={file.id}
+                      className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm"
+                    >
+                      <div className="font-medium truncate">{file.name}</div>
+                      <div className="text-xs text-neutral-500 mt-1">
+                        {(file.size / 1024).toFixed(1)} KB ·{" "}
+                        {file.type || "неизвестный тип"}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowFileListModal(false)}
+                  className="px-5 py-2.5 bg-red-600 hover:bg-red-500 rounded-xl font-medium transition-colors"
+                >
+                  Закрыть
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
