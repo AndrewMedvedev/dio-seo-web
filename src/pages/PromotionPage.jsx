@@ -17,7 +17,7 @@ import { usePromotionState } from "./hooks/usePromotionState";
 import { useChat } from "./hooks/useChat";
 import { useHistory } from "./hooks/useHistory";
 import { usePromotionActions } from "./hooks/usePromotionActions";
-
+import MarkdownMessage from "../components/Message";
 export default function PromotionPage() {
   const state = usePromotionState();
   const history = useHistory();
@@ -25,7 +25,8 @@ export default function PromotionPage() {
   const actions = usePromotionActions(state.url, state.generationId);
 
   const getMainButtonText = () => {
-    if (state.aiGenerating) return "Генерируем AIO-контент...";
+    if (state.aiGenerating)
+      return "Генерируем AIO-контент. Примерное время – не более 3 минут. Спасибо за терпение.";
     if (!state.aiContent) return "Сгенерировать AIO контент";
     return state.showAiContent
       ? "← Вернуться к SEO отчёту"
@@ -93,7 +94,9 @@ export default function PromotionPage() {
                     disabled={!state.url.trim() || state.loading}
                     className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed px-10 py-4 rounded-2xl font-medium transition-colors whitespace-nowrap"
                   >
-                    {state.loading ? "Анализируем..." : "Анализировать"}
+                    {state.loading
+                      ? "Выполняется анализ. Примерное время – не более 3 минут. Спасибо за терпение."
+                      : "Анализировать"}
                   </button>
                   <button
                     onClick={history.toggleHistory}
@@ -270,7 +273,7 @@ export default function PromotionPage() {
 
       {/* ==================== ПЛАВАЮЩИЙ БЛОК (ЧАТ + КНОПКА) ==================== */}
       {showRightPanel && (
-        <div className="fixed top-28 right-35 w-96 hidden lg:block z-50">
+        <div className="fixed top-28 right-21 w-110 hidden lg:block z-50">
           <div className="flex flex-col gap-4 h-[calc(100vh-7rem)]">
             {/* Главная кнопка (генерация AIO / переключение) */}
             <button
@@ -349,9 +352,7 @@ export default function PromotionPage() {
                               {msg.text}
                             </p>
                           ) : (
-                            <div className="prose prose-invert prose-sm max-w-full dark:prose-invert wrap-break-word prose-pre:overflow-x-auto prose-pre:max-w-full prose-code:break-words">
-                              <ReactMarkdown>{msg.text}</ReactMarkdown>
-                            </div>
+                            <MarkdownMessage text={msg.text}></MarkdownMessage>
                           )}
                         </div>
                       </div>
