@@ -231,11 +231,11 @@ export default function SmmPage() {
   ]);
   const [isKnowledgeExpanded, setIsKnowledgeExpanded] = useState(false);
 
-  // === НОВЫЕ КЛАССЫ ДЛЯ ДИНАМИЧЕСКОЙ РАЗВЁРНУТОЙ РАСКЛАДКИ ===
-  const mainColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-9" : "xl:col-span-8";
-  const sideColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-3" : "xl:col-span-4";
-  const kbColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-9" : "xl:col-span-2";
-  const rightColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-3" : "xl:col-span-10";
+  // === ОБНОВЛЁННЫЕ КЛАССЫ ДЛЯ ДИНАМИЧЕСКОЙ РАЗВЁРНУТОЙ РАСКЛАДКИ ===
+  const mainColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-10" : "xl:col-span-8";
+  const sideColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-2" : "xl:col-span-4";
+  const kbColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-10" : "xl:col-span-2";
+  const rightColSpanClass = mode === "generate" && isKnowledgeExpanded ? "xl:col-span-2" : "xl:col-span-10";
 
   const imageDataUrl = useMemo(() => {
     if (!generateResult?.generated_image_base64) return "";
@@ -374,7 +374,7 @@ export default function SmmPage() {
     <div className="min-h-screen bg-dark-900 text-white">
       <div className="pt-24 lg:pt-28 px-6 lg:px-12 max-w-screen-2xl mx-auto pb-10">
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
-          {/* Основная область (analyze / generate) — теперь динамическая ширина */}
+          {/* Основная область */}
           <div className={mainColSpanClass}>
             {mode === "analyze" ? (
               /* АНАЛИЗ — без изменений */
@@ -569,9 +569,9 @@ export default function SmmPage() {
                 </div>
               </div>
             ) : (
-              /* ГЕНЕРАЦИЯ — обновлённая раскладка с учётом ваших требований */
+              /* ГЕНЕРАЦИЯ */
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-full">
-                {/* База знаний — теперь шире (col-span-9) и занимает больше пространства при развёрнутом состоянии */}
+                {/* База знаний */}
                 <div className={`h-full ${kbColSpanClass}`}>
                   <div
                     className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl h-full flex flex-col overflow-hidden relative transition-all duration-500 ease-in-out"
@@ -579,7 +579,6 @@ export default function SmmPage() {
                     onClick={() => setIsKnowledgeExpanded((prev) => !prev)}
                   >
                     {isKnowledgeExpanded ? (
-                      /* Развёрнутое состояние — шире + больше высоты (flex-1 + дополнительный padding) */
                       <div className="p-8 flex-1 flex flex-col">
                         <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
                           <Upload className="w-5 h-5 text-red-400" />
@@ -610,7 +609,6 @@ export default function SmmPage() {
                         </div>
                       </div>
                     ) : (
-                      /* Суженное состояние — только иконка */
                       <div className="flex-1 flex items-center justify-center">
                         <Upload className="w-8 h-8 text-red-400" />
                       </div>
@@ -618,17 +616,19 @@ export default function SmmPage() {
                   </div>
                 </div>
 
-                {/* Правая колонка: Фильтры + Генерация — теперь ещё уже при развёрнутом KB */}
+                {/* Правая колонка — улучшенные collapsed-блоки */}
                 <div className={`flex flex-col gap-4 h-full ${rightColSpanClass}`}>
-                  {/* Фильтры генерации */}
+                  {/* Фильтры генерации — collapsed */}
                   <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl">
                     {isKnowledgeExpanded ? (
-                      /* Суженное состояние фильтров — только иконка */
-                      <div className="h-14 flex items-center justify-center">
-                        <Wand2 className="w-8 h-8 text-red-400" />
+                      <div className="group relative p-5 flex flex-col items-center justify-center gap-2 hover:bg-neutral-800/70 transition-all rounded-3xl min-h-[92px]">
+                        <Wand2 className="w-9 h-9 text-red-400 group-hover:scale-110 transition-transform" />
+                        <div className="text-xs font-medium text-neutral-400 text-center leading-tight">
+                          Фильтры<br />генерации
+                        </div>
                       </div>
                     ) : (
-                      /* Полное состояние */
+                      /* Полное состояние фильтров */
                       <>
                         <button
                           type="button"
@@ -731,15 +731,18 @@ export default function SmmPage() {
                     )}
                   </div>
 
-                  {/* Основной блок генерации контента */}
-                  <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-6 lg:p-8 flex flex-col">
+                  {/* Основной блок генерации — collapsed с улучшенным UX */}
+                  <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-6 flex flex-col">
                     {isKnowledgeExpanded ? (
-                      /* Суженное состояние — увеличенная высота + больший иконка */
-                      <div className="flex-1 flex items-center justify-center min-h-[280px]">
-                        <Wand2 className="w-12 h-12 text-red-400" />
+                      <div className="group flex-1 flex flex-col items-center justify-center gap-4 hover:bg-neutral-800/70 transition-all rounded-3xl min-h-[200px]">
+                        <Wand2 className="w-14 h-14 text-red-400 group-hover:scale-110 transition-transform" />
+                        <div className="text-sm font-semibold text-neutral-200 text-center">Генерация контента</div>
+                        <div className="text-xs text-neutral-500 text-center max-w-[160px]">
+                          Промпт + генерация поста
+                        </div>
                       </div>
                     ) : (
-                      /* Полное состояние */
+                      /* Полное состояние генерации */
                       <>
                         <h2 className="text-2xl font-semibold">Генерация контента</h2>
                         <p className="mt-2 text-neutral-400 text-sm">
@@ -784,11 +787,11 @@ export default function SmmPage() {
             )}
           </div>
 
-          {/* Боковая панель AI-помощник + переключение режима — теперь ещё уже при развёрнутом KB */}
+          {/* Боковая панель */}
           <div className={sideColSpanClass}>
             <div className="flex flex-col h-full">
               {mode === "analyze" ? (
-                /* Анализ — без изменений */
+                /* Анализ */
                 <div className="flex flex-col h-full gap-4">
                   <button
                     type="button"
@@ -838,15 +841,18 @@ export default function SmmPage() {
                   </div>
                 </div>
               ) : (
-                /* Генерация — collapsed / full */
+                /* Генерация — улучшенные collapsed-блоки */
                 <div className="flex flex-col h-full gap-4">
-                  {/* Кнопка переключения на анализ */}
+                  {/* Кнопка переключения на анализ — collapsed с улучшенным UX */}
                   {isKnowledgeExpanded ? (
                     <div
                       onClick={() => setMode("analyze")}
-                      className="w-full h-14 rounded-3xl bg-red-600 hover:bg-red-500 transition-colors flex items-center justify-center cursor-pointer"
+                      className="group bg-red-600 hover:bg-red-500 transition-all rounded-3xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer min-h-[92px]"
                     >
-                      <Wand2 className="w-5 h-5" />
+                      <Wand2 className="w-8 h-8 text-white group-hover:scale-110 transition-transform" />
+                      <div className="text-xs font-medium text-white text-center">
+                        Анализ<br />VK-групп
+                      </div>
                     </div>
                   ) : (
                     <button
@@ -859,15 +865,17 @@ export default function SmmPage() {
                     </button>
                   )}
 
-                  {/* AI-помощник — увеличенная высота в collapsed */}
+                  {/* AI-помощник — collapsed с улучшенным UX */}
                   {assistantOpen && (
                     isKnowledgeExpanded ? (
-                      /* Суженное состояние — увеличенная высота + больший иконка */
-                      <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-4 flex items-center justify-center min-h-[280px]">
-                        <MessageCircle className="w-12 h-12 text-red-400" />
+                      <div className="group flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-6 flex flex-col items-center justify-center gap-4 hover:bg-neutral-800/70 transition-all min-h-[200px]">
+                        <MessageCircle className="w-14 h-14 text-red-400 group-hover:scale-110 transition-transform" />
+                        <div className="text-sm font-semibold text-neutral-200 text-center">AI-помощник</div>
+                        <div className="text-xs text-neutral-500 text-center max-w-[160px]">
+                          Советы по контенту
+                        </div>
                       </div>
                     ) : (
-                      /* Полное состояние */
                       <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-4 flex flex-col">
                         <div className="text-sm text-neutral-400 mb-3">AI-помощник</div>
                         <div className="flex-1 space-y-3 overflow-y-auto pr-1 custom-scroll">

@@ -48,17 +48,6 @@ const Header = () => {
             <span className="hidden sm:inline">SMM</span>
           </Link>
 
-          <Link
-            to="/generate/content"
-            className={`px-3 sm:px-5 lg:px-6 py-2.5 sm:py-3 rounded-2xl text-sm sm:text-base font-medium transition-all whitespace-normal wrap-break-word text-center min-w-0 ${
-              isContentGen
-                ? "bg-neutral-800 text-white shadow-sm"
-                : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-            }`}
-          >
-            <span className="sm:hidden">Контент</span>
-            <span className="hidden sm:inline">Генерация контента</span>
-          </Link>
         </div>
       </div>
     </header>
