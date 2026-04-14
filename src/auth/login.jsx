@@ -28,7 +28,7 @@ export default function LoginPage() {
     clearError();
     const success = await login(data.email, data.password);
     if (success) {
-      navigate("/seo");
+      navigate("/");
     }
   };
 

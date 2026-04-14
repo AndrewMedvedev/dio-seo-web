@@ -6,24 +6,25 @@ import PromotionPage from "./pages/PromotionPage";
 import SmmPage from "./pages/SmmPage";
 import { MainLayout, AuthLayout } from "./components/layout/layout";
 import InviteAcceptPage from "./auth/registration";
-
+import DocumentationPage from "./pages/DocumentationPage";
+import { ToastProvider } from "./components/ToastProvider";
 const App = () => {
   return (
-    <>
+    <ToastProvider>
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/seo" element={<PromotionPage />} />
           <Route path="/smm" element={<SmmPage />} />
           <Route path="/generate/content" element={<ContentGenerationPage />} />
+          <Route path="/" element={<DocumentationPage />}></Route>
         </Route>
         <Route element={<AuthLayout />}>
           <Route path="/invitations" element={<InvitationsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/invite/accept" element={<InviteAcceptPage />} />
         </Route>
-        <Route path="/" element={<Navigate to="/seo" replace />} />
       </Routes>
-    </>
+    </ToastProvider>
   );
 };
 

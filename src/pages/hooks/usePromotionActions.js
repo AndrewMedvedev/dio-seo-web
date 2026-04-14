@@ -20,6 +20,7 @@ export function usePromotionActions(url, generationId) {
 
       try {
         const data = await PromotionApi.seo(url.trim());
+        console.log(data);
         setContent(data);
 
         const newGenerationId =
@@ -36,7 +37,6 @@ export function usePromotionActions(url, generationId) {
         }
       } catch (error) {
         console.error("Ошибка анализа SEO:", error);
-        alert("Не удалось проанализировать сайт. Попробуйте позже.");
       } finally {
         setLoading(false);
       }
@@ -47,11 +47,9 @@ export function usePromotionActions(url, generationId) {
   const generateAIContent = useCallback(
     async (setAiContent, setShowAiContent, setAiGenerating, generationId) => {
       if (!url?.trim()) {
-        alert("Введите URL сайта");
         return;
       }
       if (!generationId) {
-        alert("Сначала выполните SEO-анализ");
         return;
       }
 
@@ -62,7 +60,6 @@ export function usePromotionActions(url, generationId) {
         setShowAiContent(true);
       } catch (error) {
         console.error("Ошибка генерации AIO:", error);
-        alert("Не удалось сгенерировать AIO-контент.");
       } finally {
         setAiGenerating(false);
       }

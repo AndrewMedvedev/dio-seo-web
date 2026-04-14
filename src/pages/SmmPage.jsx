@@ -1099,7 +1099,7 @@ export default function SmmPage() {
                       onClick={() => setMode("analyze")}
                       className="w-full py-4 rounded-3xl bg-red-600 hover:bg-red-500 transition-colors flex items-center justify-center gap-3"
                     >
-                      <Wand2 className="w-5 h-5" />
+                      <Bot className="w-8 h-8 text-white group-hover:scale-110 transition-transform" />
                       <span className="font-medium">Анализ VK-групп</span>
                     </button>
                   )}

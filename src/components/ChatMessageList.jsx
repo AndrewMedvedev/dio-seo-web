@@ -66,8 +66,11 @@ const markdownComponents = {
     );
   },
   p: ({ children }) => (
-    <p className="whitespace-pre-wrap break-words leading-relaxed text-neutral-200">
-      {renderChildrenWithBreaks(Array.isArray(children) ? children : [children], "p")}
+    <p className="whitespace-pre-wrap wrap-break-word leading-relaxed text-neutral-200">
+      {renderChildrenWithBreaks(
+        Array.isArray(children) ? children : [children],
+        "p",
+      )}
     </p>
   ),
   li: ({ children }) => (
@@ -99,7 +102,9 @@ const markdownComponents = {
       <table className="min-w-full text-left text-sm">{children}</table>
     </div>
   ),
-  thead: ({ children }) => <thead className="bg-neutral-950/70">{children}</thead>,
+  thead: ({ children }) => (
+    <thead className="bg-neutral-950/70">{children}</thead>
+  ),
   ul: ({ children }) => (
     <ul className="list-disc space-y-2 pl-5 text-neutral-300">{children}</ul>
   ),
@@ -143,17 +148,24 @@ const ChatMessageList = ({ messages, className = "", renderMeta }) => {
               }`}
             >
               {isUser ? (
-                <p className="whitespace-pre-wrap break-words">
+                <p className="whitespace-pre-wrap wrap-break-word">
                   {normalizeRenderableText(msg.text)}
                 </p>
               ) : (
-                <div className="space-y-4 break-words">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={markdownComponents}
+                <div className="space-y-4 wrap-break-word">
+                  <div
+                    className="prose prose-slate dark:prose-invert max-w-none 
+                  prose-headings:font-semibold 
+                  prose-p:leading-relaxed
+                  prose-a:text-blue-600 dark:prose-a:text-blue-400 hover:prose-a:underline"
                   >
-                    {normalizedText}
-                  </ReactMarkdown>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={markdownComponents}
+                    >
+                      {normalizedText}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               )}
               {renderMeta?.(msg)}
