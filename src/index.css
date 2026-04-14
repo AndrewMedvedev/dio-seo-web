@@ -1,8 +1,9 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --font-sans: "Mulish", "Roboto", system-ui, sans-serif;
+  --font-sans: "Serif", "Mulish", "Roboto", system-ui, sans-serif;
 
   --color-dark-900: #0a0a0a;
   --color-dark-800: #0f0f0f;
@@ -22,7 +23,7 @@
   }
 
   html {
-    font-family: "Mulish", "Roboto", system-ui, sans-serif;
+    font-family: var(--font-sans);
     background: #0a0a0a;
     color: #e5e5e5;
     scroll-behavior: smooth;
