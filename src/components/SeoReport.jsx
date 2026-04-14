@@ -175,6 +175,64 @@ export default function SeoReport({ content }) {
         </div>
       </div>
 
+      {/* Семантическое ядро */}
+      <div>
+        <h3 className="text-xl font-semibold mb-6">Семантическое ядро</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <div className="text-emerald-400 font-medium mb-3">
+              Высокая частота
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {data.analyst_result?.semantic_core?.high_frequency?.map(
+                (kw, i) => (
+                  <span
+                    key={i}
+                    className="bg-emerald-500/10 text-emerald-400 px-4 py-2 rounded-3xl text-sm"
+                  >
+                    {kw}
+                  </span>
+                ),
+              )}
+            </div>
+          </div>
+          <div>
+            <div className="text-yellow-400 font-medium mb-3">
+              Средняя частота
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {data.analyst_result?.semantic_core?.medium_frequency?.map(
+                (kw, i) => (
+                  <span
+                    key={i}
+                    className="bg-yellow-500/10 text-yellow-400 px-4 py-2 rounded-3xl text-sm"
+                  >
+                    {kw}
+                  </span>
+                ),
+              )}
+            </div>
+          </div>
+          <div>
+            <div className="text-orange-400 font-medium mb-3">
+              Низкая частота
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {data.analyst_result?.semantic_core?.low_frequency?.map(
+                (kw, i) => (
+                  <span
+                    key={i}
+                    className="bg-orange-500/10 text-orange-400 px-4 py-2 rounded-3xl text-sm"
+                  >
+                    {kw}
+                  </span>
+                ),
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Найденные проблемы */}
       <div>
         <h3 className="text-xl font-semibold mb-6 flex items-center gap-3">
