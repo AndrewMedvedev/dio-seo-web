@@ -1,4 +1,4 @@
-import ReactMarkdown from "react-markdown";
+import { useState } from "react"; // добавим useState
 import {
   X,
   MessageCircle,
@@ -8,7 +8,9 @@ import {
   Calendar,
   Clock,
   ArrowRight,
-} from "lucide-react";
+  Maximize2,
+  Minimize2,
+} from "lucide-react"; // добавим иконки для расширения/сворачивания
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import SeoReport from "../components/SeoReport";
@@ -18,11 +20,15 @@ import { useChat } from "./hooks/useChat";
 import { useHistory } from "./hooks/useHistory";
 import { usePromotionActions } from "./hooks/usePromotionActions";
 import MarkdownMessage from "../components/Message";
+
 export default function PromotionPage() {
   const state = usePromotionState();
   const history = useHistory();
   const chat = useChat(state.url, state.generationId);
   const actions = usePromotionActions(state.url, state.generationId);
+
+  // Локальное состояние для расширения чата
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
 
   const getMainButtonText = () => {
     if (state.aiGenerating)
@@ -53,27 +59,32 @@ export default function PromotionPage() {
     );
   };
 
-  // Обработчик генерации AIO с передачей setters
   const onGenerateAIContent = () => {
     actions.generateAIContent(
       state.setAiContent,
       state.setShowAiContent,
       state.setAiGenerating,
-      state.generationId, // текущий generationId
+      state.generationId,
     );
   };
 
-  // Определяем, нужно ли показывать правую панель (и, соответственно, отступ у левой колонки)
   const showRightPanel = state.content && !history.showHistory;
+
+  // Определяем классы для плавающего блока чата в зависимости от состояния expanded
+  const chatContainerClasses = `fixed top-28 ${
+    isChatExpanded
+      ? "inset-4 right-4 w-auto h-auto" // расширенный режим: отступы со всех сторон
+      : "right-21 w-110 h-[calc(100vh-7rem)]"
+  } hidden lg:block z-50 transition-all duration-300`;
 
   return (
     <div className="min-h-screen bg-dark-900 text-white flex flex-col overflow-x-hidden">
       <div className="flex-1 flex pt-24 lg:pt-28 px-6 lg:px-12 max-w-screen-2xl mx-auto w-full">
-        {/* ==================== ЛЕВАЯ КОЛОНКА ==================== */}
+        {/* Левая колонка без изменений */}
         <div
           className={`flex-1 flex flex-col gap-6 min-w-0 ${showRightPanel ? "lg:pr-104" : ""}`}
         >
-          {/* Панель ввода URL */}
+          {/* Панель ввода URL и история — без изменений */}
           <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 shrink-0">
             {!history.showHistory ? (
               <>
@@ -271,18 +282,18 @@ export default function PromotionPage() {
         </div>
       </div>
 
-      {/* ==================== ПЛАВАЮЩИЙ БЛОК (ЧАТ + КНОПКА) ==================== */}
+      {/* ==================== ПЛАВАЮЩИЙ БЛОК ЧАТА ==================== */}
       {showRightPanel && (
-        <div className="fixed top-28 right-21 w-110 hidden lg:block z-50">
-          <div className="flex flex-col gap-4 h-[calc(100vh-7rem)]">
-            {/* Главная кнопка (генерация AIO / переключение) */}
+        <div className={chatContainerClasses}>
+          <div className="flex flex-col gap-4 h-full">
+            {/* Главная кнопка (генерация AIO) */}
             <button
               onClick={
                 state.showAiContent
                   ? () => state.setShowAiContent(false)
                   : state.aiContent
                     ? () => state.setShowAiContent(true)
-                    : onGenerateAIContent // ← изменено
+                    : onGenerateAIContent
               }
               disabled={state.aiGenerating}
               className="w-full py-4 bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 rounded-3xl font-medium text-base transition-all active:scale-[0.985]"
@@ -326,6 +337,18 @@ export default function PromotionPage() {
                       >
                         Очистить
                       </button>
+                      {/* Кнопка развернуть/свернуть */}
+                      <button
+                        onClick={() => setIsChatExpanded(!isChatExpanded)}
+                        className="text-neutral-400 hover:text-white p-2 hover:bg-neutral-800 rounded-xl transition-colors"
+                        title={isChatExpanded ? "Свернуть" : "Развернуть"}
+                      >
+                        {isChatExpanded ? (
+                          <Minimize2 className="w-5 h-5" />
+                        ) : (
+                          <Maximize2 className="w-5 h-5" />
+                        )}
+                      </button>
                       <button
                         onClick={() => state.setChatOpen(false)}
                         className="text-neutral-400 hover:text-white p-2 hover:bg-neutral-800 rounded-xl transition-colors"
@@ -352,7 +375,7 @@ export default function PromotionPage() {
                               {msg.text}
                             </p>
                           ) : (
-                            <MarkdownMessage text={msg.text}></MarkdownMessage>
+                            <MarkdownMessage text={msg.text} />
                           )}
                         </div>
                       </div>

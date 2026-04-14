@@ -8,6 +8,8 @@ export function usePromotionState() {
     return localStorage.getItem(`${PAGE_STORAGE_KEY}_url`) || "";
   });
 
+  
+
   const [content, setContent] = useState(() => {
     if (typeof window === "undefined") return null;
     const saved = localStorage.getItem(`${PAGE_STORAGE_KEY}_content`);
