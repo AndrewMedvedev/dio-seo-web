@@ -81,25 +81,54 @@ function deleteCookie(name) {
 apiClient.interceptors.request.use(
   (config) => {
     const token = tokenStorage.getAccessToken();
+
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  },
+  (error) => Promise.reject(error),
 );
 
-// 2. Response Interceptor — обработка ошибок (особенно 401)
 apiClient.interceptors.response.use(
-  (response) => response, // если всё хорошо — просто возвращаем ответ
+  (response) => response, // успешные ответы пропускаем без изменений
+
   async (error) => {
-    if (error.response?.status === 401) {
-      // Токен недействителен → выходим из системы
+    console.log(error);
+    const statusCode = error.response?.status || 500;
+    let message = "Неизвестная ошибка сервера";
+
+    if (error.response?.data?.message) {
+      message = error.response.data.message;
+    } else if (error.response?.data?.detail) {
+      message = error.response.data.detail;
+    } else if (error.message) {
+      message = error.message;
+    }
+
+    // Специальная обработка 401
+    if (statusCode === 401) {
       tokenStorage.clearTokens();
       window.location.href = "/login";
+      return Promise.reject(error);
     }
+
+    // Показываем тост об ошибке
+    if (window.showGlobalError) {
+      window.showGlobalError({
+        statusCode,
+        message,
+        variant: statusCode >= 500 ? "error" : "warning",
+      });
+    } else {
+      console.warn(
+        "window.showGlobalError не зарегистрирован. Ошибка:",
+        statusCode,
+        message,
+      );
+    }
+
     return Promise.reject(error);
   },
 );

@@ -102,6 +102,7 @@ apiClient.interceptors.response.use(
   (response) => response, // успешные ответы пропускаем без изменений
 
   async (error) => {
+    console.log(error.response.data);
     const statusCode = error.response?.status || 500;
     let message = "Неизвестная ошибка сервера";
 
