@@ -9,8 +9,14 @@ import {
   AlertTriangle,
   CheckCircle,
   Sparkles,
+  Heading1,
+  List,
+  Link as LinkIcon,
+  Image as ImageIcon,
+  BookOpen,
+  Tag,
+  Award as Trophy,
 } from "lucide-react";
-
 import ScoreCircle from "./ScoreCircle";
 
 export default function SeoReport({ content }) {
@@ -20,8 +26,11 @@ export default function SeoReport({ content }) {
   const seoResult = data.seo_result || {};
   const analystResult = data.analyst_result || {};
   const contentGen = data.content_generation_result || {};
+  const analyzeMd = seoResult.analyze_md || {};
+
   const performance = seoResult.performance || {};
   const seo = seoResult.seo || {};
+
   const seoScore = seo.score || 0;
   const performanceScore = performance.score || 0;
 
@@ -134,6 +143,344 @@ export default function SeoReport({ content }) {
           </div>
         </div>
       </div>
+
+      {/* === НОВЫЙ БЛОК: Детальный Markdown-анализ === */}
+      <div>
+        <h3 className="text-xl font-semibold mb-8 flex items-center gap-3">
+          <BookOpen className="text-sky-400" /> Детальный анализ контента
+          (Markdown)
+        </h3>
+
+        <div className="space-y-12">
+          {/* Заголовки */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <Heading1 className="text-violet-400" />
+              <div>
+                <div className="font-semibold text-lg">Заголовки</div>
+                <div className="text-sm text-neutral-500">
+                  Структура H1–H6 и SEO-релевантность
+                </div>
+              </div>
+            </div>
+            <div className="bg-dark-800 border border-neutral-800 rounded-3xl overflow-hidden">
+              {analyzeMd.headers?.length > 0 ? (
+                <div className="divide-y divide-neutral-800">
+                  {analyzeMd.headers.map((header, index) => (
+                    <div key={index} className="p-6 flex gap-6">
+                      <div className="w-20 shrink-0">
+                        <div className="inline-block bg-neutral-900 text-neutral-400 text-sm font-mono px-3 py-1 rounded-2xl">
+                          {header.tag}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-lg text-neutral-200 leading-relaxed wrap-break-word">
+                          {header.text}
+                        </div>
+                        <div className="flex items-center gap-4 mt-3">
+                          <div
+                            className={`text-xs px-3 py-1 rounded-full ${header.contains_keywords ? "bg-emerald-500/10 text-emerald-400" : "bg-neutral-800 text-neutral-500"}`}
+                          >
+                            {header.contains_keywords
+                              ? "✓ Содержит ключевые слова"
+                              : "Не содержит ключевые слова"}
+                          </div>
+                          {header.issues?.length > 0 && (
+                            <div className="text-xs px-3 py-1 bg-red-500/10 text-red-400 rounded-full">
+                              {header.issues.join(", ")}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-neutral-500 text-center">
+                  Заголовки не обнаружены
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Ключевые слова */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <Tag className="text-amber-400" />
+              <div>
+                <div className="font-semibold text-lg">
+                  Ключевые слова и плотность
+                </div>
+                <div className="text-sm text-neutral-500">
+                  Частота и плотность употребления
+                </div>
+              </div>
+            </div>
+            <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8">
+              {analyzeMd.keywords?.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {analyzeMd.keywords.map((kw, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center bg-neutral-900/50 border border-neutral-800 rounded-2xl px-6 py-4"
+                    >
+                      <div className="font-medium text-neutral-200">
+                        {kw.keyword}
+                      </div>
+                      <div className="flex items-center gap-6 text-sm">
+                        <div>
+                          <span className="text-neutral-500">Частота: </span>
+                          <span className="font-semibold text-white">
+                            {kw.count}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-neutral-500">Плотность: </span>
+                          <span className="font-semibold text-emerald-400">
+                            {kw.density.toFixed(2)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-neutral-500">
+                  Данные по ключевым словам отсутствуют
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Ссылки */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <LinkIcon className="text-rose-400" />
+              <div>
+                <div className="font-semibold text-lg">Ссылки</div>
+                <div className="text-sm text-neutral-500">
+                  Анализ внутренних и внешних ссылок
+                </div>
+              </div>
+            </div>
+            <div className="bg-dark-800 border border-neutral-800 rounded-3xl overflow-hidden">
+              {analyzeMd.links?.length > 0 ? (
+                <div className="divide-y divide-neutral-800">
+                  {analyzeMd.links.map((link, i) => (
+                    <div key={i} className="p-6 flex flex-col gap-2">
+                      <div className="text-sm text-neutral-400 break-all">
+                        {link.url}
+                      </div>
+                      <div className="text-neutral-200">
+                        Анкор:{" "}
+                        <span className="font-medium">
+                          "{link.anchor_text}"
+                        </span>
+                      </div>
+                      <div className="flex gap-3 text-xs">
+                        <div
+                          className={`px-4 py-1 rounded-2xl ${link.is_internal ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"}`}
+                        >
+                          {link.is_internal ? "Внутренняя" : "Внешняя"}
+                        </div>
+                        {link.is_broken && (
+                          <div className="px-4 py-1 bg-red-500/10 text-red-400 rounded-2xl">
+                            Битая ссылка
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-neutral-500 text-center">
+                  Ссылки не обнаружены
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Изображения */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <ImageIcon className="text-cyan-400" />
+              <div>
+                <div className="font-semibold text-lg">
+                  Изображения и alt-тексты
+                </div>
+                <div className="text-sm text-neutral-500">
+                  SEO-оптимизация изображений
+                </div>
+              </div>
+            </div>
+            <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8">
+              {analyzeMd.images?.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {analyzeMd.images.map((img, i) => (
+                    <div
+                      key={i}
+                      className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5"
+                    >
+                      <div className="text-sm text-neutral-400 mb-2 break-all">
+                        {img.src}
+                      </div>
+                      <div className="font-medium text-neutral-200 mb-3">
+                        Alt:{" "}
+                        <span className="text-neutral-300">
+                          "{img.alt_text || "—"}
+                        </span>
+                      </div>
+                      <div
+                        className={`inline-block px-4 py-1 text-xs rounded-2xl ${img.has_keywords ? "bg-emerald-500/10 text-emerald-400" : "bg-neutral-800 text-neutral-500"}`}
+                      >
+                        {img.has_keywords
+                          ? "Содержит ключевые слова"
+                          : "Не содержит ключевые слова"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-neutral-500">Изображения не обнаружены</p>
+              )}
+            </div>
+          </div>
+
+          {/* Читабельность */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <BookOpen className="text-lime-400" />
+              <div>
+                <div className="font-semibold text-lg">
+                  Читабельность текста
+                </div>
+              </div>
+            </div>
+            <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div>
+                <div className="text-neutral-500 text-sm">Слов</div>
+                <div className="text-3xl font-semibold mt-1">
+                  {analyzeMd.readability?.word_count || "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-neutral-500 text-sm">Предложений</div>
+                <div className="text-3xl font-semibold mt-1">
+                  {analyzeMd.readability?.sentence_count || "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-neutral-500 text-sm">Абзацев</div>
+                <div className="text-3xl font-semibold mt-1">
+                  {analyzeMd.readability?.paragraphs_count || "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-neutral-500 text-sm">
+                  Индекс читабельности
+                </div>
+                <div className="text-3xl font-semibold mt-1 text-emerald-400">
+                  {analyzeMd.readability?.readability_score || "—"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Сильные структуры и стиль */}
+          {analyzeMd.strong_structures && (
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <Trophy className="text-purple-400" />
+                <div>
+                  <div className="font-semibold text-lg">
+                    Сильные риторические конструкции
+                  </div>
+                  <div className="text-sm text-neutral-500">
+                    Стиль письма и влияние на читателя
+                  </div>
+                </div>
+              </div>
+              <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 space-y-8">
+                <div>
+                  <div className="uppercase text-xs tracking-widest text-neutral-500 mb-3">
+                    Стиль текста
+                  </div>
+                  <div className="text-lg text-neutral-200">
+                    {analyzeMd.strong_structures.writing_style}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="uppercase text-xs tracking-widest text-neutral-500 mb-3">
+                    Влияние на читателя
+                  </div>
+                  <div className="text-neutral-300 leading-relaxed">
+                    {analyzeMd.strong_structures.influence_on_reader}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="uppercase text-xs tracking-widest text-neutral-500 mb-3">
+                      Влияние на SEO
+                    </div>
+                    <div className="text-neutral-300 leading-relaxed">
+                      {analyzeMd.strong_structures.influence_on_seo}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="uppercase text-xs tracking-widest text-neutral-500 mb-3">
+                      Влияние на конверсию
+                    </div>
+                    <div className="text-neutral-300 leading-relaxed">
+                      {analyzeMd.strong_structures.influence_on_conversion}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Примеры конструкций */}
+                {analyzeMd.strong_structures.examples?.length > 0 && (
+                  <div>
+                    <div className="uppercase text-xs tracking-widest text-neutral-500 mb-4">
+                      Примеры сильных конструкций
+                    </div>
+                    <div className="space-y-4">
+                      {analyzeMd.strong_structures.examples.map((ex, i) => (
+                        <div
+                          key={i}
+                          className="bg-neutral-900 border-l-4 border-purple-500 pl-6 py-4 text-neutral-300 italic"
+                        >
+                          {ex}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Рекомендации по стилю */}
+                {analyzeMd.strong_structures.recommendations?.length > 0 && (
+                  <div>
+                    <div className="uppercase text-xs tracking-widest text-neutral-500 mb-4">
+                      Рекомендации по стилю
+                    </div>
+                    <div className="space-y-3">
+                      {analyzeMd.strong_structures.recommendations.map(
+                        (rec, i) => (
+                          <div key={i} className="flex gap-3 text-neutral-300">
+                            <span className="text-emerald-400 mt-1">•</span>
+                            <span>{rec}</span>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      {/* === КОНЕЦ НОВОГО БЛОКА === */}
 
       {/* Специализация компании */}
       <div>
