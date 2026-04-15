@@ -148,7 +148,6 @@ export default function SeoReport({ content }) {
       <div>
         <h3 className="text-xl font-semibold mb-8 flex items-center gap-3">
           <BookOpen className="text-sky-400" /> Детальный анализ контента
-          (Markdown)
         </h3>
 
         <div className="space-y-12">
