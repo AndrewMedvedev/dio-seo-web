@@ -4,6 +4,7 @@ const asArray = (value) => (Array.isArray(value) ? value : []);
 const asObject = (value) =>
   value && typeof value === "object" && !Array.isArray(value) ? value : {};
 const asString = (value) => (value == null ? "" : String(value));
+const asTrimmedString = (value) => asString(value).trim();
 
 /**
  * @typedef {Object} SmmAnalyzeResult
@@ -77,6 +78,20 @@ function normalizeGenerate(data) {
   };
 }
 
+export function buildGeneratePostPayload(payload) {
+  const normalized = asObject(payload);
+
+  return {
+    prompt: asTrimmedString(normalized.prompt),
+    theme: asTrimmedString(normalized.theme) || null,
+    tone: asTrimmedString(normalized.tone) || null,
+    content_type: asString(normalized.content_type || "text"),
+    publish: Boolean(normalized.publish),
+    length: asString(normalized.length || "medium"),
+    language: asString(normalized.language || "ru"),
+  };
+}
+
 const toError = (error, fallback) => {
   const message =
     error?.response?.data?.detail ||
@@ -98,7 +113,10 @@ export const SmmApi = {
 
   generatePost: async (payload) => {
     try {
-      const response = await apiClient.post("/vk/posts/generate", payload);
+      const response = await apiClient.post(
+        "/vk/posts/generate",
+        buildGeneratePostPayload(payload),
+      );
       return normalizeGenerate(response.data);
     } catch (error) {
       throw toError(error, "Не удалось сгенерировать контент.");

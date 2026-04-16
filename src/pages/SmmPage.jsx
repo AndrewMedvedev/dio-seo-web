@@ -2,19 +2,18 @@
 import {
   Bot,
   Image,
-  MessageCircle,
-  Send,
   Wand2,
   History,
   ChevronLeft,
   Upload,
   X,
-  Copy,
 } from "lucide-react";
 import { SmmApi } from "../api/Smm";
 import { createPortal } from "react-dom";
 import CustomSelect from "../components/CustomSelect";
 import { formatNumber, formatDate, getImageDataUrl } from "../utils/smmUtils";
+import GenerateFiltersPanel from "../components/smm/GenerateFiltersPanel";
+import GenerateResultPanel from "../components/smm/GenerateResultPanel";
 
 const initialAnalyzeForm = {
   source: "",
@@ -323,41 +322,6 @@ function KnowledgeListItem({ item, onDelete }) {
   );
 }
 
-function ResultTypeBadge({ contentType }) {
-  const label =
-    contentTypeOptions.find((item) => item.value === contentType)?.label ||
-    "Текст";
-
-  return (
-    <div className="inline-flex items-center rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-sm text-red-200">
-      Тип: {label}
-    </div>
-  );
-}
-
-function KnowledgeMaterialCard({ item }) {
-  return (
-    <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-5 min-h-[240px]">
-      <div className="text-[22px] leading-snug font-semibold text-white">
-        {item.title}
-      </div>
-
-      <div className="mt-2 text-neutral-300 text-[15px]">
-        Оценка: {item.score}
-      </div>
-
-      <div className="mt-1 text-neutral-500 text-[15px]">
-        token overlap: {item.tokenOverlap}
-        {typeof item.exactHits === "number" ? `, exact term hits: ${item.exactHits}` : ""}
-      </div>
-
-      <div className="mt-4 whitespace-pre-line text-neutral-200 text-sm leading-6">
-        {item.content}
-      </div>
-    </div>
-  );
-}
-
 export default function SmmPage() {
   const [mode, setMode] = useState("analyze");
   const [analyzeForm, setAnalyzeForm] = useState(initialAnalyzeForm);
@@ -376,9 +340,7 @@ export default function SmmPage() {
   const [publishError, setPublishError] = useState("");
   const [publishSuccess, setPublishSuccess] = useState("");
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
-  const [assistantOpen] = useState(true);
   const [isGenerateFiltersOpen, setIsGenerateFiltersOpen] = useState(true);
-  const [assistantInput, setAssistantInput] = useState("");
   const [assistantMessages, setAssistantMessages] = useState([
     {
       id: "assistant-welcome",
@@ -405,7 +367,6 @@ export default function SmmPage() {
   });
 
   const [improvementQuestion, setImprovementQuestion] = useState("");
-  const [improvementPlan, setImprovementPlan] = useState("");
 
   const mockAnalyzeResult = {
     group_name: "Красное и Белое",
@@ -460,24 +421,18 @@ export default function SmmPage() {
   };
 
   const mainColSpanClass =
-    mode === "generate" && isKnowledgeExpanded
-      ? "xl:col-span-11"
+    mode === "analyze" || (mode === "generate" && !isKnowledgeExpanded)
+      ? "xl:col-span-12"
+      : mode === "generate" && isKnowledgeExpanded
+      ? "xl:col-span-12"
       : "xl:col-span-9";
 
   const sideColSpanClass =
-    mode === "generate" && isKnowledgeExpanded
-      ? "xl:col-span-1"
+    mode === "analyze" || (mode === "generate" && !isKnowledgeExpanded)
+      ? "hidden"
+      : mode === "generate" && isKnowledgeExpanded
+      ? "xl:hidden"
       : "xl:col-span-3";
-
-  const kbColSpanClass =
-    mode === "generate" && isKnowledgeExpanded
-      ? "xl:col-span-9"
-      : "xl:col-span-2";
-
-  const rightColSpanClass =
-    mode === "generate" && isKnowledgeExpanded
-      ? "xl:col-span-3"
-      : "xl:col-span-10";
 
   const imageDataUrl = useMemo(() => {
     if (!generateResult) return "";
@@ -493,32 +448,10 @@ export default function SmmPage() {
     }));
   }, [knowledgeItems]);
 
-  const sendAssistantMessage = () => {
-    const text = assistantInput.trim();
-    if (!text) return;
-
-    const userMessage = { id: `${Date.now()}-u`, type: "user", text };
-
-    const aiReplyText =
-      mode === "analyze"
-        ? analyzeResult
-          ? "Сфокусируйтесь на метриках вовлеченности, найденных конкурентах и рекомендациях. Начните с 1–2 действий с максимальным эффектом."
-          : "Сначала запустите анализ VK-группы, после этого я помогу разобрать результат."
-        : generateResult
-        ? "Проверьте тональность и длину текста. Для image-постов можно уточнить prompt и перегенерировать изображение."
-        : "Сначала сгенерируйте контент, затем можно обсудить финальную редактуру перед публикацией.";
-
-    const aiMessage = { id: `${Date.now()}-a`, type: "ai", text: aiReplyText };
-
-    setAssistantMessages((prev) => [...prev, userMessage, aiMessage]);
-    setAssistantInput("");
-  };
-
   const handleAnalyzeSubmit = async (event) => {
     event.preventDefault();
     setAnalyzeError("");
     setAnalyzeLoading(true);
-    setImprovementPlan("");
 
     try {
       const data = await SmmApi.analyzeGroup({
@@ -564,12 +497,16 @@ export default function SmmPage() {
     setGenerateLoading(true);
 
     try {
-      const data = await SmmApi.generatePost({
-        ...generateForm,
+      const payload = {
         prompt: generateForm.prompt.trim(),
         theme: generateForm.theme.trim() || null,
         tone: generateForm.tone.trim() || null,
-      });
+        content_type: String(generateForm.content_type || "text"),
+        publish: Boolean(generateForm.publish),
+        length: String(generateForm.length || "medium"),
+        language: String(generateForm.language || "ru"),
+      };
+      const data = await SmmApi.generatePost(payload);
 
       setGenerateResult(data);
       setEditedText(data.text || "");
@@ -810,8 +747,6 @@ export default function SmmPage() {
     const aiText =
       "Рекомендую начать с контента, который легче вовлекает аудиторию: опросы, короткие полезные посты, регулярные рубрики и более явные призывы к действию. После этого можно сравнить, какие темы дают больше лайков и комментариев, и масштабировать их.";
 
-    setImprovementPlan(aiText);
-
     setAssistantMessages((prev) => [
       ...prev,
       { id: `${Date.now()}-u-plan`, type: "user", text },
@@ -845,8 +780,9 @@ export default function SmmPage() {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
           <div className={mainColSpanClass}>
             {mode === "analyze" ? (
-              <div className="flex flex-col gap-4 overflow-visible">
-                <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl">
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start overflow-visible">
+                <div className="xl:col-span-9">
+                  <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl">
                   <button
                     type="button"
                     onClick={() => setIsFiltersOpen((prev) => !prev)}
@@ -914,8 +850,20 @@ export default function SmmPage() {
                     </div>
                   </div>
                 </div>
+                </div>
 
-                <div className="w-full">
+                <div className="xl:col-span-3">
+                  <button
+                    type="button"
+                    onClick={() => setMode("generate")}
+                    className="w-full h-14 rounded-3xl bg-red-600 hover:bg-red-500 transition-colors flex items-center justify-center gap-3"
+                  >
+                    <Wand2 className="w-5 h-5" />
+                    <span className="font-medium">Генерация контента</span>
+                  </button>
+                </div>
+
+                <div className="xl:col-span-12 w-full">
                   <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 lg:p-10 overflow-y-auto flex flex-col">
                     <h2 className="text-2xl font-semibold">Анализ VK-группы</h2>
                     <p className="mt-2 text-neutral-400 text-sm">
@@ -1209,8 +1157,20 @@ export default function SmmPage() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-full">
-                <div className={`h-full ${kbColSpanClass}`}>
+              <div
+                className={`grid grid-cols-1 gap-6 h-full ${
+                  isKnowledgeExpanded
+                    ? "xl:grid-cols-[9fr_4fr] xl:items-start"
+                    : "xl:grid-cols-12"
+                }`}
+              >
+                <div
+                  className={`h-full ${
+                    !isKnowledgeExpanded
+                      ? "xl:col-span-2 xl:row-span-2"
+                      : "xl:col-span-1"
+                  }`}
+                >
                   <div
                     className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl h-full flex flex-col overflow-hidden relative transition-all duration-500 ease-in-out"
                     style={{ cursor: isKnowledgeExpanded ? "default" : "pointer" }}
@@ -1431,162 +1391,54 @@ export default function SmmPage() {
                   </div>
                 </div>
 
-                <div className={`flex flex-col gap-4 h-full ${rightColSpanClass}`}>
-                  <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl overflow-hidden">
-                    {isKnowledgeExpanded ? (
-                      <div className="group relative p-5 flex flex-col items-center justify-center gap-2 hover:bg-neutral-800/70 transition-all rounded-3xl min-h-[92px]">
-                        <Wand2 className="w-9 h-9 text-red-400 group-hover:scale-110 transition-transform" />
-                        <div className="text-xs font-medium text-neutral-400 text-center leading-tight">
-                          Фильтры
-                          <br />
-                          генерации
-                        </div>
-                      </div>
-                    ) : (
-                      <>
+                <div
+                  className={`flex flex-col gap-4 h-full ${
+                    !isKnowledgeExpanded
+                      ? "xl:col-span-7"
+                      : "xl:col-span-1 xl:min-w-0 xl:self-stretch"
+                  }`}
+                >
+                  <div
+                    className={
+                      isKnowledgeExpanded
+                        ? "xl:grid xl:grid-cols-[3fr_1fr] xl:gap-4 xl:items-start"
+                        : ""
+                    }
+                  >
+                    <GenerateFiltersPanel
+                      isKnowledgeExpanded={isKnowledgeExpanded}
+                      isGenerateFiltersOpen={isGenerateFiltersOpen}
+                      onToggleFilters={() =>
+                        setIsGenerateFiltersOpen((prev) => !prev)
+                      }
+                      generateForm={generateForm}
+                      setGenerateForm={setGenerateForm}
+                      contentTypeOptions={contentTypeOptions}
+                      lengthOptions={lengthOptions}
+                      languageOptions={languageOptions}
+                    />
+
+                    {isKnowledgeExpanded && (
+                      <div className="hidden xl:block">
                         <button
                           type="button"
-                          onClick={() =>
-                            setIsGenerateFiltersOpen((prev) => !prev)
-                          }
-                          className="w-full h-14 px-5 flex items-center justify-between"
+                          onClick={() => setMode("analyze")}
+                          className="w-full h-[115px] rounded-3xl bg-red-600 hover:bg-red-500 transition-all p-5 flex flex-col items-center justify-center gap-2"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-red-500/10 rounded-xl flex items-center justify-center">
-                              <Wand2 className="w-4 h-4 text-red-400" />
-                            </div>
-                            <div className="font-semibold">
-                              Фильтры генерации
-                            </div>
+                          <Bot className="w-8 h-8 text-white transition-transform" />
+                          <div className="text-xs font-medium text-white text-center leading-tight">
+                            Анализ
+                            <br />
+                            VK-групп
                           </div>
-                          <span
-                            className={`text-neutral-500 text-xs transition-transform duration-300 ${
-                              isGenerateFiltersOpen ? "rotate-180" : ""
-                            }`}
-                          >
-                            ▼
-                          </span>
                         </button>
-
-                        <div
-                          className={`overflow-hidden transition-all duration-300 ease-out ${
-                            isGenerateFiltersOpen
-                              ? "max-h-96 opacity-100"
-                              : "max-h-0 opacity-0"
-                          }`}
-                        >
-                          <div className="p-5">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                              <div>
-                                <label className="block text-sm text-neutral-400 mb-2">
-                                  Тема
-                                </label>
-                                <input
-                                  value={generateForm.theme}
-                                  onChange={(e) =>
-                                    setGenerateForm((prev) => ({
-                                      ...prev,
-                                      theme: e.target.value,
-                                    }))
-                                  }
-                                  placeholder="Например: маркетинг"
-                                  className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white placeholder:text-neutral-500"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-sm text-neutral-400 mb-2">
-                                  Тон
-                                </label>
-                                <input
-                                  value={generateForm.tone}
-                                  onChange={(e) =>
-                                    setGenerateForm((prev) => ({
-                                      ...prev,
-                                      tone: e.target.value,
-                                    }))
-                                  }
-                                  placeholder="Например: дружелюбный"
-                                  className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white placeholder:text-neutral-500"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-sm text-neutral-400 mb-2">
-                                  Тип контента
-                                </label>
-                                <CustomSelect
-                                  value={generateForm.content_type}
-                                  onChange={(e) =>
-                                    setGenerateForm((prev) => ({
-                                      ...prev,
-                                      content_type: e.target.value,
-                                    }))
-                                  }
-                                  options={contentTypeOptions}
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-sm text-neutral-400 mb-2">
-                                  Длина
-                                </label>
-                                <CustomSelect
-                                  value={generateForm.length}
-                                  onChange={(e) =>
-                                    setGenerateForm((prev) => ({
-                                      ...prev,
-                                      length: e.target.value,
-                                    }))
-                                  }
-                                  options={lengthOptions}
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-sm text-neutral-400 mb-2">
-                                  Язык
-                                </label>
-                                <CustomSelect
-                                  value={generateForm.language}
-                                  onChange={(e) =>
-                                    setGenerateForm((prev) => ({
-                                      ...prev,
-                                      language: e.target.value,
-                                    }))
-                                  }
-                                  options={languageOptions}
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-sm text-neutral-400 mb-2">
-                                  Сразу публиковать
-                                </label>
-                                <CustomSelect
-                                  value={generateForm.publish ? "yes" : "no"}
-                                  onChange={(e) =>
-                                    setGenerateForm((prev) => ({
-                                      ...prev,
-                                      publish: e.target.value === "yes",
-                                    }))
-                                  }
-                                  options={[
-                                    { value: "no", label: "Нет" },
-                                    { value: "yes", label: "Да" },
-                                  ]}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </>
+                      </div>
                     )}
                   </div>
 
-                  <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl flex flex-col overflow-hidden">
-                    {isKnowledgeExpanded ? (
-                      <div className="group flex-1 p-6 flex flex-col items-center justify-center gap-4 hover:bg-neutral-800/70 transition-all min-h-[200px] rounded-3xl">
+                  {isKnowledgeExpanded && (
+                    <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl flex flex-col overflow-hidden min-h-[200px]">
+                      <div className="group flex-1 p-6 flex flex-col items-center justify-center gap-4 hover:bg-neutral-800/70 transition-all rounded-3xl">
                         <Image className="w-14 h-14 text-red-400 group-hover:scale-110 transition-transform" />
                         <div className="text-sm font-semibold text-neutral-200 text-center">
                           Генерация контента
@@ -1595,7 +1447,26 @@ export default function SmmPage() {
                           Промпт + генерация поста
                         </div>
                       </div>
-                    ) : (
+                    </div>
+                  )}
+                </div>
+
+                {!isKnowledgeExpanded && (
+                  <div className="xl:col-span-3">
+                    <button
+                      type="button"
+                      onClick={() => setMode("analyze")}
+                      className="w-full h-14 py-4 rounded-3xl bg-red-600 hover:bg-red-500 transition-colors flex items-center justify-center gap-3"
+                    >
+                      <Bot className="w-8 h-8 text-white group-hover:scale-110 transition-transform" />
+                      <span className="font-medium">Анализ VK-групп</span>
+                    </button>
+                  </div>
+                )}
+
+                {!isKnowledgeExpanded && (
+                  <div className="xl:col-span-10">
+                    <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl flex flex-col overflow-hidden">
                       <div className="p-6 flex flex-col flex-1 overflow-y-auto">
                         <h2 className="text-2xl font-semibold">
                           Генерация контента
@@ -1643,165 +1514,30 @@ export default function SmmPage() {
                           </div>
                         </form>
 
-                        {generateError && (
-                          <div className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
-                            {generateError}
-                          </div>
-                        )}
-
-                        {generateResult ? (
-                          <div className="space-y-5">
-                            <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-5 lg:p-6">
-                              <div className="flex items-start justify-between gap-4 flex-wrap">
-                                <div>
-                                  <div className="text-[28px] md:text-[34px] leading-tight font-semibold text-white">
-                                    Готовый контент
-                                  </div>
-                                  <div className="mt-3">
-                                    <ResultTypeBadge
-                                      contentType={generateResult.content_type}
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="px-4 py-2 rounded-full bg-neutral-800 text-neutral-300 text-sm border border-neutral-700">
-                                  {generateResult.published ? "Опубликовано" : "Черновик"}
-                                </div>
-                              </div>
-
-                              <div className="mt-6 bg-[#141414] border border-neutral-800 rounded-[28px] p-4">
-                                <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-                                  <div className="text-xl font-semibold text-white">
-                                    Текст
-                                  </div>
-
-                                  <div className="flex items-center gap-3 flex-wrap">
-                                    <div className="text-sm text-neutral-400">
-                                      Символов: {editedText.length}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={handleCopyText}
-                                      className="h-11 px-4 rounded-2xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white transition-colors inline-flex items-center gap-2"
-                                    >
-                                      <Copy className="w-4 h-4" />
-                                      Копировать
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={handlePublish}
-                                      disabled={publishLoading}
-                                      className="h-11 px-5 rounded-2xl bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 text-white font-medium transition-colors"
-                                    >
-                                      {publishLoading ? "Публикуем..." : "Опубликовать"}
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <textarea
-                                  value={editedText}
-                                  onChange={(e) => setEditedText(e.target.value)}
-                                  rows={7}
-                                  className="w-full bg-[#0f0f0f] border border-neutral-800 rounded-2xl px-4 py-4 text-white resize-none outline-none placeholder:text-neutral-500"
-                                />
-                              </div>
-
-                              {(generateResult.content_type === "image" || imageDataUrl) && (
-                                <div className="mt-5 bg-[#141414] border border-neutral-800 rounded-[28px] p-4">
-                                  <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-                                    <div className="text-xl font-semibold text-white">
-                                      Промпт для изображения
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={handleRegenerateImage}
-                                      disabled={regenerateImageLoading}
-                                      className="h-11 px-5 rounded-2xl bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 text-white font-medium transition-colors"
-                                    >
-                                      {regenerateImageLoading
-                                        ? "Перегенерируем..."
-                                        : "Перегенерировать изображение"}
-                                    </button>
-                                  </div>
-
-                                  <textarea
-                                    value={editedImagePrompt}
-                                    onChange={(e) =>
-                                      setEditedImagePrompt(e.target.value)
-                                    }
-                                    rows={4}
-                                    className="w-full bg-[#0f0f0f] border border-neutral-800 rounded-2xl px-4 py-4 text-white resize-none outline-none placeholder:text-neutral-500"
-                                  />
-
-                                  {regenerateImageError && (
-                                    <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
-                                      {regenerateImageError}
-                                    </div>
-                                  )}
-
-                                  {imageDataUrl && (
-                                    <div className="mt-5">
-                                      <div className="text-sm text-neutral-500 mb-3">
-                                        Фото-референсы не были прикреплены в запросе генерации
-                                      </div>
-                                      <img
-                                        src={imageDataUrl}
-                                        alt="Сгенерированное изображение"
-                                        className="w-full max-w-[760px] rounded-3xl border border-neutral-800 object-cover"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              {(publishError || publishSuccess) && (
-                                <div className="mt-5 space-y-3">
-                                  {publishError && (
-                                    <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
-                                      {publishError}
-                                    </div>
-                                  )}
-
-                                  {publishSuccess && (
-                                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-300 text-sm">
-                                      {publishSuccess}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-5 lg:p-6">
-                              <div className="text-[28px] md:text-[34px] leading-tight font-semibold text-white">
-                                Использованные материалы базы знаний
-                              </div>
-
-                              <div className="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
-                                {knowledgeMatches.map((item) => (
-                                  <KnowledgeMaterialCard key={item.id} item={item} />
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          !generateLoading &&
-                          !generateError && (
-                            <div className="mt-2 border border-dashed border-neutral-700 rounded-2xl p-8 text-center text-neutral-500 flex-1 flex items-center justify-center min-h-[420px]">
-                              <div>
-                                <Image className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                                <p className="text-lg">Сгенерируйте контент</p>
-                                <p className="text-sm mt-2 opacity-75">
-                                  Текст, изображение и использованные материалы появятся здесь
-                                </p>
-                              </div>
-                            </div>
-                          )
-                        )}
+                        <GenerateResultPanel
+                          generateResult={generateResult}
+                          generateLoading={generateLoading}
+                          generateError={generateError}
+                          contentTypeOptions={contentTypeOptions}
+                          editedText={editedText}
+                          setEditedText={setEditedText}
+                          onCopyText={handleCopyText}
+                          onPublish={handlePublish}
+                          publishLoading={publishLoading}
+                          publishError={publishError}
+                          publishSuccess={publishSuccess}
+                          imageDataUrl={imageDataUrl}
+                          editedImagePrompt={editedImagePrompt}
+                          setEditedImagePrompt={setEditedImagePrompt}
+                          onRegenerateImage={handleRegenerateImage}
+                          regenerateImageLoading={regenerateImageLoading}
+                          regenerateImageError={regenerateImageError}
+                          knowledgeMatches={knowledgeMatches}
+                        />
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
@@ -1843,62 +1579,6 @@ export default function SmmPage() {
                       <span className="font-medium">Анализ VK-групп</span>
                     </button>
                   )}
-
-                  {assistantOpen &&
-                    (isKnowledgeExpanded ? (
-                      <div className="group flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-6 flex flex-col items-center justify-center gap-4 hover:bg-neutral-800/70 transition-all min-h-[200px] overflow-hidden">
-                        <MessageCircle className="w-14 h-14 text-red-400 group-hover:scale-110 transition-transform" />
-                        <div className="text-sm font-semibold text-neutral-200 text-center">
-                          AI-помощник
-                        </div>
-                        <div className="text-xs text-neutral-500 text-center max-w-[160px]">
-                          Советы по контенту
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-4 flex flex-col">
-                        <div className="text-sm text-neutral-400 mb-3">
-                          AI-помощник
-                        </div>
-
-                        <div className="flex-1 space-y-3 overflow-y-auto pr-1 custom-scroll">
-                          {assistantMessages.map((message) => (
-                            <div
-                              key={message.id}
-                              className={`rounded-2xl px-4 py-3 text-sm ${
-                                message.type === "user"
-                                  ? "bg-red-600 text-white ml-6"
-                                  : "bg-neutral-800 text-neutral-200 mr-6"
-                              }`}
-                            >
-                              {message.text}
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="flex gap-2 mt-4 pt-2 border-t border-neutral-800">
-                          <input
-                            value={assistantInput}
-                            onChange={(e) => setAssistantInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                sendAssistantMessage();
-                              }
-                            }}
-                            placeholder="Спросите про SMM"
-                            className="flex-1 bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 py-2.5 text-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={sendAssistantMessage}
-                            className="w-10 h-10 rounded-2xl bg-red-600 hover:bg-red-500 flex items-center justify-center"
-                          >
-                            <Send className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
                 </div>
               )}
             </div>
