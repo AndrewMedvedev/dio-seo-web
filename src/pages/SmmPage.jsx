@@ -1,4 +1,4 @@
-﻿import { useMemo, useState, useRef, useLayoutEffect, useEffect } from "react";
+﻿import { useMemo, useState, useRef, useEffect } from "react";
 import {
   Bot,
   Image,
@@ -6,16 +6,15 @@ import {
   Send,
   Wand2,
   History,
-  ChevronDown,
   ChevronLeft,
-  Check,
   Upload,
   X,
+  Copy,
 } from "lucide-react";
 import { SmmApi } from "../api/Smm";
 import { createPortal } from "react-dom";
-
-
+import CustomSelect from "../components/CustomSelect";
+import { formatNumber, formatDate, getImageDataUrl } from "../utils/smmUtils";
 
 const initialAnalyzeForm = {
   source: "",
@@ -162,21 +161,91 @@ const mockRecommendations = [
   },
 ];
 
-const formatNumber = (value) =>
-  new Intl.NumberFormat("ru-RU").format(Number(value || 0));
+const createMockImageSvgDataUrl = () => {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#f4efe8"/>
+          <stop offset="100%" stop-color="#d9d1c7"/>
+        </linearGradient>
+        <linearGradient id="desk" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="100%" stop-color="#ece7e0"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="900" fill="url(#bg)"/>
+      <rect x="0" y="0" width="1200" height="140" fill="#d7d4cf"/>
+      <rect x="70" y="60" width="260" height="34" rx="8" fill="#efefef"/>
+      <rect x="920" y="70" width="180" height="300" rx="24" fill="#1f1f1f"/>
+      <rect x="945" y="100" width="130" height="205" rx="12" fill="#2f2f2f"/>
+      <rect x="170" y="520" width="840" height="220" rx="28" fill="url(#desk)"/>
+      <rect x="780" y="260" width="120" height="220" rx="14" fill="#2b2b2b"/>
+      <rect x="825" y="285" width="30" height="165" rx="6" fill="#101010"/>
+      <ellipse cx="420" cy="435" rx="118" ry="120" fill="#ffcf32"/>
+      <rect x="340" y="445" width="220" height="190" rx="44" fill="#e0b328"/>
+      <rect x="415" y="450" width="70" height="82" rx="12" fill="#2f78ff"/>
+      <text x="450" y="505" font-family="Arial, sans-serif" font-size="42" text-anchor="middle" fill="white">1C</text>
+      <circle cx="455" cy="292" r="80" fill="#f2c8a8"/>
+      <path d="M378 300c10-80 155-120 180-15 6 28 3 53-8 76-55 5-117-12-172-61z" fill="#3a261e"/>
+      <rect x="292" y="630" width="320" height="38" rx="12" fill="#2e2e2e"/>
+      <rect x="618" y="645" width="110" height="18" rx="8" fill="#d7d7d7"/>
+      <rect x="748" y="615" width="110" height="58" rx="10" fill="#151515"/>
+      <rect x="76" y="226" width="180" height="400" rx="24" fill="#efeae2" opacity="0.65"/>
+      <rect x="986" y="420" width="96" height="18" rx="9" fill="#dbd4ca"/>
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
 
-const formatDate = (unixTs) => {
-  const value = Number(unixTs || 0);
-  if (!value) return "-";
-  const date = new Date(value * 1000);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+const mockGenerateKnowledgeMaterials = [
+  {
+    id: "gm-1",
+    title: "Все о компании ДИО-Консалт",
+    score: 0.5065,
+    tokenOverlap: 1,
+    content:
+      '**5. Имиджевые посты**\n\n* О компании\n* О команде\n* О процессе работы\n\n---\n\n### 4.3 Требования к постам\n\n* Короткие абзацы (2–4 строки)\n* Чёткая структура\n* Заголовок обязателен\n* Без орфографических ошибок',
+  },
+  {
+    id: "gm-2",
+    title: "Все о компании ДИО-Консалт",
+    score: 0.4886,
+    tokenOverlap: 2,
+    content:
+      '## 4. Инструкция по ведению группы (соцсети)\n\n### 4.1 Общий стиль\n\n* Пишем простым и понятным языком\n* Избегаем сложных технических терминов без объяснения\n* Общаемся дружелюбно, но профессионально\n* Не используем канцеляризм',
+  },
+  {
+    id: "gm-3",
+    title: "Все о компании ДИО-Консалт",
+    score: 0.4744,
+    tokenOverlap: 1,
+    content:
+      '# Инструкция для сотрудников и контент-менеджеров\n\n## Компания «ДИО Консалт»\n\nМы помогаем клиентам наводить порядок в бизнес-процессах, автоматизировать учёт и выстраивать устойчивую работу компании.',
+  },
+  {
+    id: "gm-4",
+    title: "футболка 1 с желтая",
+    score: 2.0059,
+    tokenOverlap: 1,
+    exactHits: 1,
+    content:
+      'Описание изображения:\nФутболка 1C жёлтая',
+  },
+];
+
+const mockGenerateResult = {
+  text:
+    "Наши 1С-ники — настоящие супергерои нашего офиса! Каждый день они превращают хаос цифр в порядок и помогают нашим клиентам достигать новых высот в бизнесе. Благодаря их профессионализму и вдохновляющему подходу мы уверенно движемся вперед. Спасибо вам за вашу работу и поддержку!",
+  image_prompt:
+    "Персонажи в жёлтых футболках с эмблемой 1С работают за компьютерами, сосредоточенно глядя в экраны, вокруг аккуратный офис с современным интерьером, освещённый мягким светом ламп дневного света, атмосфера спокойная и деловая, подчёркивающая профессионализм героев.",
+  content_type: "image",
+  status: "draft",
+  published: false,
+  generated_image_base64: "",
+  generated_image_mime_type: "",
+  mock_image_data_url: createMockImageSvgDataUrl(),
+  knowledge_matches: mockGenerateKnowledgeMaterials,
 };
 
 function MetricsCard({ label, value }) {
@@ -254,118 +323,37 @@ function KnowledgeListItem({ item, onDelete }) {
   );
 }
 
-function CustomSelect({
-  value,
-  onChange,
-  options,
-  className = "",
-  containerClassName = "",
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [dropdownStyle, setDropdownStyle] = useState({});
-  const buttonRef = useRef(null);
-  const selectedOption = options.find((opt) => opt.value === value);
-
-  useLayoutEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setDropdownStyle({
-        position: "fixed",
-        top: rect.bottom + 8,
-        left: rect.left,
-        width: rect.width,
-        zIndex: 101,
-      });
-    }
-  }, [isOpen]);
+function ResultTypeBadge({ contentType }) {
+  const label =
+    contentTypeOptions.find((item) => item.value === contentType)?.label ||
+    "Текст";
 
   return (
-    <div className={`relative ${containerClassName}`}>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full h-[50px] bg-dark-800 border border-neutral-700 hover:border-neutral-600 focus:border-red-500 rounded-2xl px-4 text-white transition-all flex items-center justify-between ${className}`}
-      >
-        <div className="flex items-center gap-3">
-          {selectedOption?.flag && (
-            <span className="text-xl">{selectedOption.flag}</span>
-          )}
-          {selectedOption?.icon && (
-            <span className="text-lg">{selectedOption.icon}</span>
-          )}
-          <div className="text-left">
-            <div className="font-medium">{selectedOption?.label}</div>
-            {selectedOption?.description && (
-              <div className="text-xs text-neutral-500">
-                {selectedOption.description}
-              </div>
-            )}
-          </div>
-        </div>
-        <ChevronDown
-          className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
-      </button>
+    <div className="inline-flex items-center rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-sm text-red-200">
+      Тип: {label}
+    </div>
+  );
+}
 
-      {isOpen &&
-        createPortal(
-          <>
-            <div
-              className="fixed inset-0 z-[100]"
-              onClick={() => setIsOpen(false)}
-            />
-            <div
-              style={dropdownStyle}
-              className="bg-dark-800 border border-neutral-700 rounded-2xl overflow-hidden shadow-2xl"
-            >
-              {options.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    onChange({ target: { value: option.value } });
-                    setIsOpen(false);
-                  }}
-                  className={`w-full px-4 py-3 text-left hover:bg-neutral-700/50 transition-colors flex items-center justify-between group ${
-                    option.value === value ? "bg-red-500/10" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {option.flag && (
-                      <span className="text-xl">{option.flag}</span>
-                    )}
-                    {option.icon && (
-                      <span className="text-lg">{option.icon}</span>
-                    )}
-                    <div>
-                      <div
-                        className={`font-medium ${
-                          option.value === value
-                            ? "text-red-400"
-                            : "text-white"
-                        }`}
-                      >
-                        {option.label}
-                      </div>
-                      {option.description && (
-                        <div className="text-xs text-neutral-500">
-                          {option.description}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {option.value === value && (
-                    <Check className="w-4 h-4 text-red-400" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </>,
-          document.body
-        )}
+function KnowledgeMaterialCard({ item }) {
+  return (
+    <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-5 min-h-[240px]">
+      <div className="text-[22px] leading-snug font-semibold text-white">
+        {item.title}
+      </div>
+
+      <div className="mt-2 text-neutral-300 text-[15px]">
+        Оценка: {item.score}
+      </div>
+
+      <div className="mt-1 text-neutral-500 text-[15px]">
+        token overlap: {item.tokenOverlap}
+        {typeof item.exactHits === "number" ? `, exact term hits: ${item.exactHits}` : ""}
+      </div>
+
+      <div className="mt-4 whitespace-pre-line text-neutral-200 text-sm leading-6">
+        {item.content}
+      </div>
     </div>
   );
 }
@@ -492,9 +480,10 @@ export default function SmmPage() {
       : "xl:col-span-10";
 
   const imageDataUrl = useMemo(() => {
-    if (!generateResult?.generated_image_base64) return "";
-    const mime = generateResult.generated_image_mime_type || "image/png";
-    return `data:${mime};base64,${generateResult.generated_image_base64}`;
+    if (!generateResult) return "";
+
+    const apiImage = getImageDataUrl(generateResult);
+    return apiImage || generateResult.mock_image_data_url || "";
   }, [generateResult]);
 
   useEffect(() => {
@@ -525,46 +514,46 @@ export default function SmmPage() {
     setAssistantInput("");
   };
 
-const handleAnalyzeSubmit = async (event) => {
-  event.preventDefault();
-  setAnalyzeError("");
-  setAnalyzeLoading(true);
-  setImprovementPlan("");
+  const handleAnalyzeSubmit = async (event) => {
+    event.preventDefault();
+    setAnalyzeError("");
+    setAnalyzeLoading(true);
+    setImprovementPlan("");
 
-  try {
-    const data = await SmmApi.analyzeGroup({
-      source: analyzeForm.source.trim(),
-      post_limit: Number(analyzeForm.post_limit) || 30,
-      language: analyzeForm.language,
-    });
-
-    setAnalyzeResult(data);
-  } catch (error) {
-    const message = error?.message || "";
-
-    const isConnectionError =
-      message.includes("ERR_CONNECTION_REFUSED") ||
-      message.includes("Network Error") ||
-      message.includes("Failed to fetch") ||
-      message.includes("fetch");
-
-    if (isConnectionError) {
-      setAnalyzeResult({
-        ...mockAnalyzeResult,
-        group_name: analyzeForm.source.trim() || mockAnalyzeResult.group_name,
+    try {
+      const data = await SmmApi.analyzeGroup({
+        source: analyzeForm.source.trim(),
+        post_limit: Number(analyzeForm.post_limit) || 30,
+        language: analyzeForm.language,
       });
 
-      setAnalyzeError(
-        "Бэкенд недоступен, поэтому показан демонстрационный результат. Как только API снова станет доступен, будет использоваться реальный ответ сервера."
-      );
-    } else {
-      setAnalyzeError(error.message);
-      setAnalyzeResult(null);
+      setAnalyzeResult(data);
+    } catch (error) {
+      const message = error?.message || "";
+
+      const isConnectionError =
+        message.includes("ERR_CONNECTION_REFUSED") ||
+        message.includes("Network Error") ||
+        message.includes("Failed to fetch") ||
+        message.includes("fetch");
+
+      if (isConnectionError) {
+        setAnalyzeResult({
+          ...mockAnalyzeResult,
+          group_name: analyzeForm.source.trim() || mockAnalyzeResult.group_name,
+        });
+
+        setAnalyzeError(
+          "Бэкенд недоступен, поэтому показан демонстрационный результат. Как только API снова станет доступен, будет использоваться реальный ответ сервера."
+        );
+      } else {
+        setAnalyzeError(error.message);
+        setAnalyzeResult(null);
+      }
+    } finally {
+      setAnalyzeLoading(false);
     }
-  } finally {
-    setAnalyzeLoading(false);
-  }
-};
+  };
 
   const handleGenerateSubmit = async (event) => {
     event.preventDefault();
@@ -581,12 +570,38 @@ const handleAnalyzeSubmit = async (event) => {
         theme: generateForm.theme.trim() || null,
         tone: generateForm.tone.trim() || null,
       });
+
       setGenerateResult(data);
       setEditedText(data.text || "");
       setEditedImagePrompt(data.image_prompt || "");
     } catch (error) {
-      setGenerateError(error.message);
-      setGenerateResult(null);
+      const message = error?.message || "";
+
+      const isConnectionError =
+        message.includes("ERR_CONNECTION_REFUSED") ||
+        message.includes("Network Error") ||
+        message.includes("Failed to fetch") ||
+        message.includes("fetch");
+
+      if (isConnectionError) {
+        const fallbackResult = {
+          ...mockGenerateResult,
+          content_type:
+            generateForm.content_type === "image"
+              ? "image"
+              : mockGenerateResult.content_type,
+        };
+
+        setGenerateResult(fallbackResult);
+        setEditedText(fallbackResult.text || "");
+        setEditedImagePrompt(fallbackResult.image_prompt || "");
+        setGenerateError(
+          "Бэкенд недоступен, поэтому показан демонстрационный результат. Как только API снова станет доступен, будет использоваться реальный ответ сервера."
+        );
+      } else {
+        setGenerateError(error.message);
+        setGenerateResult(null);
+      }
     } finally {
       setGenerateLoading(false);
     }
@@ -620,11 +635,35 @@ const handleAnalyzeSubmit = async (event) => {
               image_prompt: data.image_prompt,
               generated_image_base64: data.generated_image_base64,
               generated_image_mime_type: data.generated_image_mime_type,
+              mock_image_data_url: "",
             }
           : prev
       );
     } catch (error) {
-      setRegenerateImageError(error.message);
+      const message = error?.message || "";
+
+      const isConnectionError =
+        message.includes("ERR_CONNECTION_REFUSED") ||
+        message.includes("Network Error") ||
+        message.includes("Failed to fetch") ||
+        message.includes("fetch");
+
+      if (isConnectionError) {
+        setGenerateResult((prev) =>
+          prev
+            ? {
+                ...prev,
+                image_prompt: editedImagePrompt.trim() || prev.image_prompt,
+                mock_image_data_url: createMockImageSvgDataUrl(),
+              }
+            : prev
+        );
+        setRegenerateImageError(
+          "Сервер недоступен, поэтому показано демонстрационное изображение."
+        );
+      } else {
+        setRegenerateImageError(error.message);
+      }
     } finally {
       setRegenerateImageLoading(false);
     }
@@ -659,9 +698,45 @@ const handleAnalyzeSubmit = async (event) => {
 
       setPublishSuccess("Пост успешно опубликован.");
     } catch (error) {
-      setPublishError(error.message);
+      const messageText = error?.message || "";
+
+      const isConnectionError =
+        messageText.includes("ERR_CONNECTION_REFUSED") ||
+        messageText.includes("Network Error") ||
+        messageText.includes("Failed to fetch") ||
+        messageText.includes("fetch");
+
+      if (isConnectionError) {
+        setGenerateResult((prev) =>
+          prev
+            ? {
+                ...prev,
+                text: message,
+                published: true,
+              }
+            : prev
+        );
+        setPublishSuccess(
+          "Сервер недоступен, поэтому публикация показана в демонстрационном режиме."
+        );
+      } else {
+        setPublishError(error.message);
+      }
     } finally {
       setPublishLoading(false);
+    }
+  };
+
+  const handleCopyText = async () => {
+    const text = editedText.trim();
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setPublishSuccess("Текст скопирован в буфер обмена.");
+      setPublishError("");
+    } catch {
+      setPublishError("Не удалось скопировать текст.");
     }
   };
 
@@ -690,10 +765,6 @@ const handleAnalyzeSubmit = async (event) => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  };
-
-  const openFileDialog = () => {
-    fileInputRef.current?.click();
   };
 
   const handleKnowledgeDelete = (id) => {
@@ -762,6 +833,11 @@ const handleAnalyzeSubmit = async (event) => {
     analyzeResult?.title ||
     analyzeForm.source ||
     "VK-группа";
+
+  const knowledgeMatches =
+    generateResult?.knowledge_matches?.length
+      ? generateResult.knowledge_matches
+      : mockGenerateKnowledgeMaterials;
 
   return (
     <div className="min-h-screen bg-dark-900 text-white">
@@ -839,7 +915,7 @@ const handleAnalyzeSubmit = async (event) => {
                   </div>
                 </div>
 
-                <div className="xl:w-[calc(100%+346px)] xl:max-w-none">
+                <div className="w-full">
                   <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 lg:p-10 overflow-y-auto flex flex-col">
                     <h2 className="text-2xl font-semibold">Анализ VK-группы</h2>
                     <p className="mt-2 text-neutral-400 text-sm">
@@ -1082,11 +1158,6 @@ const handleAnalyzeSubmit = async (event) => {
                           <div className="text-2xl font-semibold text-white mb-4">
                             AI-помощник
                           </div>
-
-                          <p className="text-neutral-300 text-lg md:text-xl mb-6">
-                            {improvementPlan ||
-                              "Задайте вопрос по улучшению группы, и помощник предложит следующий шаг."}
-                          </p>
 
                           <div className="space-y-3 mb-6 max-h-[320px] overflow-y-auto pr-1 custom-scroll">
                             {assistantMessages.map((message) => (
@@ -1525,7 +1596,7 @@ const handleAnalyzeSubmit = async (event) => {
                         </div>
                       </div>
                     ) : (
-                      <div className="p-6 flex flex-col flex-1">
+                      <div className="p-6 flex flex-col flex-1 overflow-y-auto">
                         <h2 className="text-2xl font-semibold">
                           Генерация контента
                         </h2>
@@ -1573,90 +1644,159 @@ const handleAnalyzeSubmit = async (event) => {
                         </form>
 
                         {generateError && (
-                          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
+                          <div className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
                             {generateError}
                           </div>
                         )}
 
-                        {generateResult && (
-                          <div className="space-y-4 overflow-y-auto">
-                            <div className="bg-dark-800 border border-neutral-800 rounded-2xl p-4">
-                              <div className="text-sm text-neutral-500 mb-2">
-                                Текст поста
+                        {generateResult ? (
+                          <div className="space-y-5">
+                            <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-5 lg:p-6">
+                              <div className="flex items-start justify-between gap-4 flex-wrap">
+                                <div>
+                                  <div className="text-[28px] md:text-[34px] leading-tight font-semibold text-white">
+                                    Готовый контент
+                                  </div>
+                                  <div className="mt-3">
+                                    <ResultTypeBadge
+                                      contentType={generateResult.content_type}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="px-4 py-2 rounded-full bg-neutral-800 text-neutral-300 text-sm border border-neutral-700">
+                                  {generateResult.published ? "Опубликовано" : "Черновик"}
+                                </div>
                               </div>
-                              <textarea
-                                value={editedText}
-                                onChange={(e) => setEditedText(e.target.value)}
-                                rows={8}
-                                className="w-full bg-transparent text-white resize-none outline-none"
-                              />
+
+                              <div className="mt-6 bg-[#141414] border border-neutral-800 rounded-[28px] p-4">
+                                <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+                                  <div className="text-xl font-semibold text-white">
+                                    Текст
+                                  </div>
+
+                                  <div className="flex items-center gap-3 flex-wrap">
+                                    <div className="text-sm text-neutral-400">
+                                      Символов: {editedText.length}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={handleCopyText}
+                                      className="h-11 px-4 rounded-2xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white transition-colors inline-flex items-center gap-2"
+                                    >
+                                      <Copy className="w-4 h-4" />
+                                      Копировать
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handlePublish}
+                                      disabled={publishLoading}
+                                      className="h-11 px-5 rounded-2xl bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 text-white font-medium transition-colors"
+                                    >
+                                      {publishLoading ? "Публикуем..." : "Опубликовать"}
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <textarea
+                                  value={editedText}
+                                  onChange={(e) => setEditedText(e.target.value)}
+                                  rows={7}
+                                  className="w-full bg-[#0f0f0f] border border-neutral-800 rounded-2xl px-4 py-4 text-white resize-none outline-none placeholder:text-neutral-500"
+                                />
+                              </div>
+
+                              {(generateResult.content_type === "image" || imageDataUrl) && (
+                                <div className="mt-5 bg-[#141414] border border-neutral-800 rounded-[28px] p-4">
+                                  <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+                                    <div className="text-xl font-semibold text-white">
+                                      Промпт для изображения
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={handleRegenerateImage}
+                                      disabled={regenerateImageLoading}
+                                      className="h-11 px-5 rounded-2xl bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 text-white font-medium transition-colors"
+                                    >
+                                      {regenerateImageLoading
+                                        ? "Перегенерируем..."
+                                        : "Перегенерировать изображение"}
+                                    </button>
+                                  </div>
+
+                                  <textarea
+                                    value={editedImagePrompt}
+                                    onChange={(e) =>
+                                      setEditedImagePrompt(e.target.value)
+                                    }
+                                    rows={4}
+                                    className="w-full bg-[#0f0f0f] border border-neutral-800 rounded-2xl px-4 py-4 text-white resize-none outline-none placeholder:text-neutral-500"
+                                  />
+
+                                  {regenerateImageError && (
+                                    <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
+                                      {regenerateImageError}
+                                    </div>
+                                  )}
+
+                                  {imageDataUrl && (
+                                    <div className="mt-5">
+                                      <div className="text-sm text-neutral-500 mb-3">
+                                        Фото-референсы не были прикреплены в запросе генерации
+                                      </div>
+                                      <img
+                                        src={imageDataUrl}
+                                        alt="Сгенерированное изображение"
+                                        className="w-full max-w-[760px] rounded-3xl border border-neutral-800 object-cover"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {(publishError || publishSuccess) && (
+                                <div className="mt-5 space-y-3">
+                                  {publishError && (
+                                    <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
+                                      {publishError}
+                                    </div>
+                                  )}
+
+                                  {publishSuccess && (
+                                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-300 text-sm">
+                                      {publishSuccess}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
-                            {(generateResult.content_type === "image" ||
-                              imageDataUrl) && (
-                              <div className="bg-dark-800 border border-neutral-800 rounded-2xl p-4">
-                                <div className="text-sm text-neutral-500 mb-2">
-                                  Prompt для изображения
-                                </div>
-                                <textarea
-                                  value={editedImagePrompt}
-                                  onChange={(e) =>
-                                    setEditedImagePrompt(e.target.value)
-                                  }
-                                  rows={4}
-                                  className="w-full bg-transparent text-white resize-none outline-none"
-                                />
-
-                                <button
-                                  type="button"
-                                  onClick={handleRegenerateImage}
-                                  disabled={regenerateImageLoading}
-                                  className="mt-4 w-full bg-neutral-800 hover:bg-neutral-700 disabled:bg-neutral-800/60 px-4 py-3 rounded-2xl font-medium transition-colors"
-                                >
-                                  {regenerateImageLoading
-                                    ? "Перегенерируем..."
-                                    : "Перегенерировать изображение"}
-                                </button>
-
-                                {regenerateImageError && (
-                                  <div className="mt-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
-                                    {regenerateImageError}
-                                  </div>
-                                )}
-
-                                {imageDataUrl && (
-                                  <img
-                                    src={imageDataUrl}
-                                    alt="Сгенерированное изображение"
-                                    className="mt-4 rounded-2xl border border-neutral-800 w-full object-cover"
-                                  />
-                                )}
+                            <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-5 lg:p-6">
+                              <div className="text-[28px] md:text-[34px] leading-tight font-semibold text-white">
+                                Использованные материалы базы знаний
                               </div>
-                            )}
 
-                            <div className="flex flex-col gap-3">
-                              <button
-                                type="button"
-                                onClick={handlePublish}
-                                disabled={publishLoading}
-                                className="w-full bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 px-4 py-3 rounded-2xl font-medium transition-colors"
-                              >
-                                {publishLoading ? "Публикуем..." : "Опубликовать"}
-                              </button>
-
-                              {publishError && (
-                                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
-                                  {publishError}
-                                </div>
-                              )}
-
-                              {publishSuccess && (
-                                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-300 text-sm">
-                                  {publishSuccess}
-                                </div>
-                              )}
+                              <div className="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                {knowledgeMatches.map((item) => (
+                                  <KnowledgeMaterialCard key={item.id} item={item} />
+                                ))}
+                              </div>
                             </div>
                           </div>
+                        ) : (
+                          !generateLoading &&
+                          !generateError && (
+                            <div className="mt-2 border border-dashed border-neutral-700 rounded-2xl p-8 text-center text-neutral-500 flex-1 flex items-center justify-center min-h-[420px]">
+                              <div>
+                                <Image className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                <p className="text-lg">Сгенерируйте контент</p>
+                                <p className="text-sm mt-2 opacity-75">
+                                  Текст, изображение и использованные материалы появятся здесь
+                                </p>
+                              </div>
+                            </div>
+                          )
                         )}
                       </div>
                     )}
@@ -1697,7 +1837,7 @@ const handleAnalyzeSubmit = async (event) => {
                     <button
                       type="button"
                       onClick={() => setMode("analyze")}
-                      className="w-full py-4 rounded-3xl bg-red-600 hover:bg-red-500 transition-colors flex items-center justify-center gap-3"
+                      className="w-full h-14 py-4 rounded-3xl bg-red-600 hover:bg-red-500 transition-colors flex items-center justify-center gap-3"
                     >
                       <Bot className="w-8 h-8 text-white group-hover:scale-110 transition-transform" />
                       <span className="font-medium">Анализ VK-групп</span>
