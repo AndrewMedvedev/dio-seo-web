@@ -80,6 +80,33 @@ function deleteCookie(name) {
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
 }
 
+function decodeJwtPayload(token) {
+  if (!token) return null;
+
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(window.atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+function getCurrentUserId() {
+  const token = tokenStorage.getAccessToken();
+  const payload = decodeJwtPayload(token);
+  if (!payload) return null;
+
+  const candidate = payload.user_id ?? payload.id ?? payload.sub ?? null;
+  if (candidate === null || candidate === undefined) return null;
+
+  const normalized = String(candidate).trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 // ========================
 // Interceptors
 // ========================
@@ -144,8 +171,13 @@ apiClient.interceptors.response.use(
 // ========================
 export const PromotionApi = {
   seo: async (url) => {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      throw new Error("Не удалось определить user_id для SEO-запроса.");
+    }
+
     const response = await apiClient.get(
-      `/api/v1/seo?url=${encodeURIComponent(url)}`,
+      `/api/v1/seo/${encodeURIComponent(userId)}?url=${encodeURIComponent(url)}`,
     );
     return response.data;
   },

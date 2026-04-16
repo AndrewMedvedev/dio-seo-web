@@ -20,7 +20,6 @@ export function usePromotionState() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // === НОВОЕ СОСТОЯНИЕ ДЛЯ generationId ===
   const [generationId, setGenerationId] = useState(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem(`${PAGE_STORAGE_KEY}_generationId`) || null;
@@ -31,39 +30,41 @@ export function usePromotionState() {
     return localStorage.getItem(`${PAGE_STORAGE_KEY}_showAiContent`) === "true";
   });
 
-  const [chatOpen, setChatOpen] = useState(() => {
+  const [showInterlinking, setShowInterlinking] = useState(() => {
     if (typeof window === "undefined") return false;
-    return localStorage.getItem(`${PAGE_STORAGE_KEY}_chatOpen`) === "true";
+    return localStorage.getItem(`${PAGE_STORAGE_KEY}_showInterlinking`) === "true";
+  });
+
+  const [chatOpen, setChatOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const stored = localStorage.getItem(`${PAGE_STORAGE_KEY}_chatOpen`);
+    return stored === null ? true : stored === "true";
   });
 
   const [loading, setLoading] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [urlError, setUrlError] = useState("");
 
-  // Сохранение в localStorage
   useEffect(() => {
     localStorage.setItem(`${PAGE_STORAGE_KEY}_url`, url);
   }, [url]);
 
   useEffect(() => {
     if (content) {
-      localStorage.setItem(
-        `${PAGE_STORAGE_KEY}_content`,
-        JSON.stringify(content),
-      );
+      localStorage.setItem(`${PAGE_STORAGE_KEY}_content`, JSON.stringify(content));
+    } else {
+      localStorage.removeItem(`${PAGE_STORAGE_KEY}_content`);
     }
   }, [content]);
 
   useEffect(() => {
     if (aiContent) {
-      localStorage.setItem(
-        `${PAGE_STORAGE_KEY}_aiContent`,
-        JSON.stringify(aiContent),
-      );
+      localStorage.setItem(`${PAGE_STORAGE_KEY}_aiContent`, JSON.stringify(aiContent));
+    } else {
+      localStorage.removeItem(`${PAGE_STORAGE_KEY}_aiContent`);
     }
   }, [aiContent]);
 
-  // Сохранение generationId
   useEffect(() => {
     if (generationId) {
       localStorage.setItem(`${PAGE_STORAGE_KEY}_generationId`, generationId);
@@ -73,14 +74,15 @@ export function usePromotionState() {
   }, [generationId]);
 
   useEffect(() => {
-    localStorage.setItem(
-      `${PAGE_STORAGE_KEY}_showAiContent`,
-      showAiContent.toString(),
-    );
+    localStorage.setItem(`${PAGE_STORAGE_KEY}_showAiContent`, String(showAiContent));
   }, [showAiContent]);
 
   useEffect(() => {
-    localStorage.setItem(`${PAGE_STORAGE_KEY}_chatOpen`, chatOpen.toString());
+    localStorage.setItem(`${PAGE_STORAGE_KEY}_showInterlinking`, String(showInterlinking));
+  }, [showInterlinking]);
+
+  useEffect(() => {
+    localStorage.setItem(`${PAGE_STORAGE_KEY}_chatOpen`, String(chatOpen));
   }, [chatOpen]);
 
   const validateUrl = (value) => {
@@ -88,6 +90,7 @@ export function usePromotionState() {
       setUrlError("");
       return;
     }
+
     try {
       const urlToCheck = value.startsWith("http") ? value : `https://${value}`;
       new URL(urlToCheck);
@@ -110,10 +113,12 @@ export function usePromotionState() {
     setContent,
     aiContent,
     setAiContent,
-    generationId, // ← добавлено
-    setGenerationId, // ← добавлено (это и вызывало ошибку)
+    generationId,
+    setGenerationId,
     showAiContent,
     setShowAiContent,
+    showInterlinking,
+    setShowInterlinking,
     chatOpen,
     setChatOpen,
     loading,
