@@ -25,7 +25,7 @@ export default function CollapsiblePanel({
           <div className="font-semibold">{title}</div>
         </div>
         <span
-          className={`text-neutral-500 text-xs transition-transform duration-300 ${
+          className={`text-neutral-500 text-base transition-transform duration-300 ${
             isOpen ? "rotate-180" : ""
           }`}
         >

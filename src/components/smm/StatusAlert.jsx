@@ -7,7 +7,7 @@ const variantClasses = {
 export default function StatusAlert({ children, variant = "error", className = "" }) {
   return (
     <div
-      className={`rounded-2xl border px-4 py-3 text-sm ${
+      className={`rounded-2xl border px-4 py-3 text-base ${
         variantClasses[variant] || variantClasses.error
       } ${className}`}
     >

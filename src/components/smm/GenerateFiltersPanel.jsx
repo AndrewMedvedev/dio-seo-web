@@ -23,7 +23,7 @@ export default function GenerateFiltersPanel({
       <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl overflow-hidden">
         <div className="group relative p-5 flex flex-col items-center justify-center gap-2 hover:bg-neutral-800/70 transition-all rounded-3xl min-h-[92px]">
           <Wand2 className="w-9 h-9 text-red-400 group-hover:scale-110 transition-transform" />
-          <div className="text-xs font-medium text-neutral-400 text-center leading-tight">
+          <div className="text-base font-medium text-neutral-400 text-center leading-tight">
             Фильтры
             <br />
             генерации

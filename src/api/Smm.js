@@ -5,6 +5,7 @@ const asObject = (value) =>
   value && typeof value === "object" && !Array.isArray(value) ? value : {};
 const asString = (value) => (value == null ? "" : String(value));
 const asTrimmedString = (value) => asString(value).trim();
+const isIsoDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 /**
  * @typedef {Object} SmmAnalyzeResult
@@ -78,6 +79,70 @@ function normalizeGenerate(data) {
   };
 }
 
+function normalizeHistoryItem(item) {
+  const normalized = asObject(item);
+  const rawResult = asObject(normalized.result);
+  const fallbackResult = rawResult && Object.keys(rawResult).length ? rawResult : normalized;
+  const result = normalizeAnalyze(fallbackResult);
+  const source = asObject(normalized.source);
+  const metrics = asObject(normalized.metrics);
+  const ai = asObject(normalized.ai);
+
+  return {
+    ...normalized,
+    id:
+      normalized.id ??
+      normalized.history_id ??
+      normalized.uuid ??
+      `${normalized.created_at || Date.now()}`,
+    created_at: asString(normalized.created_at || normalized.createdAt),
+    source: {
+      ...asObject(result.source),
+      ...source,
+      name: asString(
+        source.name || source.title || normalized.group_name || result.group_name || result.title,
+      ),
+      handle: asString(
+        source.handle || source.screen_name || source.domain || normalized.handle || normalized.screen_name,
+      ),
+      url: asString(source.url || normalized.url),
+    },
+    metrics: {
+      ...asObject(result.metrics),
+      total_posts_analyzed: Number(
+        metrics.total_posts_analyzed || result.metrics?.total_posts_analyzed || 0,
+      ),
+      average_likes: Number(metrics.average_likes || result.metrics?.average_likes || 0),
+      average_comments: Number(
+        metrics.average_comments || result.metrics?.average_comments || 0,
+      ),
+    },
+    ai: {
+      ...asObject(result.ai),
+      ...ai,
+      summary: asString(ai.summary || result.ai?.summary || normalized.summary),
+    },
+    result,
+  };
+}
+
+function normalizeHistoryResponse(data) {
+  const normalized = asObject(data);
+  const list = Array.isArray(normalized.results)
+    ? normalized.results
+    : Array.isArray(data)
+      ? data
+      : asArray(normalized.items);
+  const results = list.map(normalizeHistoryItem);
+
+  return {
+    results,
+    count: Number(normalized.count || results.length),
+    next: normalized.next || null,
+    previous: normalized.previous || null,
+  };
+}
+
 export function buildGeneratePostPayload(payload) {
   const normalized = asObject(payload);
 
@@ -92,6 +157,28 @@ export function buildGeneratePostPayload(payload) {
   };
 }
 
+export function buildAnalyzeGroupPayload(payload) {
+  const normalized = asObject(payload);
+  const dateFrom = asTrimmedString(normalized.date_from);
+  const dateTo = asTrimmedString(normalized.date_to);
+
+  const result = {
+    source: asTrimmedString(normalized.source),
+    post_limit: Number(normalized.post_limit) || 30,
+    language: asString(normalized.language || "ru"),
+  };
+
+  if (dateFrom && isIsoDate(dateFrom)) {
+    result.date_from = dateFrom;
+  }
+
+  if (dateTo && isIsoDate(dateTo)) {
+    result.date_to = dateTo;
+  }
+
+  return result;
+}
+
 const toError = (error, fallback) => {
   const message =
     error?.response?.data?.detail ||
@@ -104,7 +191,10 @@ const toError = (error, fallback) => {
 export const SmmApi = {
   analyzeGroup: async (payload) => {
     try {
-      const response = await apiClient.post("/vk/group/analyze", payload);
+      const response = await apiClient.post(
+        "/vk/group/analyze",
+        buildAnalyzeGroupPayload(payload),
+      );
       return normalizeAnalyze(response.data);
     } catch (error) {
       throw toError(error, "Не удалось выполнить анализ VK-группы.");
@@ -144,6 +234,33 @@ export const SmmApi = {
       return asObject(response.data);
     } catch (error) {
       throw toError(error, "Не удалось опубликовать пост.");
+    }
+  },
+
+  history: async (page = 1, limit = 10) => {
+    try {
+      const response = await apiClient.get(`/vk/group/history?page=${page}&limit=${limit}`);
+      return normalizeHistoryResponse(response.data);
+    } catch (error) {
+      throw toError(error, "Не удалось загрузить историю анализов.");
+    }
+  },
+
+  deleteHistoryItem: async (id) => {
+    try {
+      const response = await apiClient.delete(`/vk/group/history/${id}`);
+      return asObject(response.data);
+    } catch (error) {
+      throw toError(error, "Не удалось удалить запись истории.");
+    }
+  },
+
+  clearHistory: async () => {
+    try {
+      const response = await apiClient.delete("/vk/group/history");
+      return asObject(response.data);
+    } catch (error) {
+      throw toError(error, "Не удалось очистить историю.");
     }
   },
 };

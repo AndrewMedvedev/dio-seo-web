@@ -45,7 +45,7 @@ export default function CustomSelect({
           <div className="text-left">
             <div className="font-medium">{selectedOption?.label}</div>
             {selectedOption?.description && (
-              <div className="text-xs text-neutral-500">
+              <div className="text-base text-neutral-500">
                 {selectedOption.description}
               </div>
             )}
@@ -99,7 +99,7 @@ export default function CustomSelect({
                         {option.label}
                       </div>
                       {option.description && (
-                        <div className="text-xs text-neutral-500">
+                        <div className="text-base text-neutral-500">
                           {option.description}
                         </div>
                       )}

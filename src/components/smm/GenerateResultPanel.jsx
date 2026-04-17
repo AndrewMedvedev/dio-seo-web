@@ -7,7 +7,7 @@ function ResultTypeBadge({ contentType, contentTypeOptions }) {
     "Текст";
 
   return (
-    <div className="inline-flex items-center rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-sm text-red-200">
+    <div className="inline-flex items-center rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-base text-red-200">
       Тип: {label}
     </div>
   );
@@ -27,7 +27,7 @@ function KnowledgeMaterialCard({ item }) {
         {typeof item.exactHits === "number" ? `, exact term hits: ${item.exactHits}` : ""}
       </div>
 
-      <div className="mt-4 whitespace-pre-line text-neutral-200 text-sm leading-6">
+      <div className="mt-4 whitespace-pre-line text-neutral-200 text-base leading-6">
         {item.content}
       </div>
     </div>
@@ -67,7 +67,7 @@ export default function GenerateResultPanel({
           <div>
             <Image className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg">Сгенерируйте контент</p>
-            <p className="text-sm mt-2 opacity-75">
+            <p className="text-base mt-2 opacity-75">
               Текст, изображение и использованные материалы появятся здесь
             </p>
           </div>
@@ -93,7 +93,7 @@ export default function GenerateResultPanel({
             </div>
           </div>
 
-          <div className="px-4 py-2 rounded-full bg-neutral-800 text-neutral-300 text-sm border border-neutral-700">
+          <div className="px-4 py-2 rounded-full bg-neutral-800 text-neutral-300 text-base border border-neutral-700">
             {generateResult.published ? "Опубликовано" : "Черновик"}
           </div>
         </div>
@@ -103,7 +103,7 @@ export default function GenerateResultPanel({
             <div className="text-xl font-semibold text-white">Текст</div>
 
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="text-sm text-neutral-400">Символов: {editedText.length}</div>
+              <div className="text-base text-neutral-400">Символов: {editedText.length}</div>
               <button
                 type="button"
                 onClick={onCopyText}
@@ -161,7 +161,7 @@ export default function GenerateResultPanel({
 
             {imageDataUrl && (
               <div className="mt-5">
-                <div className="text-sm text-neutral-500 mb-3">
+                <div className="text-base text-neutral-500 mb-3">
                   Фото-референсы не были прикреплены в запросе генерации
                 </div>
                 <img

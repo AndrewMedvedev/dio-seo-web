@@ -1,9 +1,11 @@
-﻿import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import {
   Bot,
   Image,
   Wand2,
   History,
+  Loader2,
+  ArrowRight,
   ChevronLeft,
   Upload,
   X,
@@ -14,6 +16,28 @@ import CustomSelect from "../components/CustomSelect";
 import { formatNumber, formatDate, getImageDataUrl } from "../utils/smmUtils";
 import GenerateFiltersPanel from "../components/smm/GenerateFiltersPanel";
 import GenerateResultPanel from "../components/smm/GenerateResultPanel";
+
+const HISTORY_PAGE_LIMIT = 10;
+
+const isConnectionErrorMessage = (message = "") =>
+  ["ERR_CONNECTION_REFUSED", "Network Error", "Failed to fetch", "fetch"].some(
+    (token) => message.includes(token),
+  );
+
+const formatHistoryDateTime = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
 
 const initialAnalyzeForm = {
   source: "",
@@ -335,6 +359,16 @@ export default function SmmPage() {
   const [regenerateImageLoading, setRegenerateImageLoading] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
   const [analyzeError, setAnalyzeError] = useState("");
+  const [showAnalyzeHistory, setShowAnalyzeHistory] = useState(false);
+  const [historyData, setHistoryData] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const [historyUsingMock, setHistoryUsingMock] = useState(false);
+  const [historyHasLoaded, setHistoryHasLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [historyMutationLoading, setHistoryMutationLoading] = useState(false);
   const [generateError, setGenerateError] = useState("");
   const [regenerateImageError, setRegenerateImageError] = useState("");
   const [publishError, setPublishError] = useState("");
@@ -420,6 +454,49 @@ export default function SmmPage() {
     },
   };
 
+  const createMockAnalyzeHistory = () => [
+    {
+      id: "mock-vk-1",
+      created_at: new Date(Date.now() - 13 * 60 * 1000).toISOString(),
+      source: { name: "Красное и Белое", handle: "@krasnoebeloe" },
+      metrics: { total_posts_analyzed: 20, average_likes: 9, average_comments: 0 },
+      ai: {
+        summary:
+          "Группа Красное и Белое: низкая активность комментариев, умеренная публикационная активность.",
+      },
+      result: {
+        ...mockAnalyzeResult,
+        group_name: "Красное и Белое",
+        metrics: {
+          ...mockAnalyzeResult.metrics,
+          total_posts_analyzed: 20,
+          average_likes: 9,
+          average_comments: 0,
+        },
+      },
+    },
+    {
+      id: "mock-vk-2",
+      created_at: new Date(Date.now() - 34 * 60 * 1000).toISOString(),
+      source: { name: "ДИО-Консалт", handle: "@diocon" },
+      metrics: { total_posts_analyzed: 20, average_likes: 0, average_comments: 13 },
+      ai: {
+        summary:
+          "Группа ДИО-Консалт ориентирована на бухгалтеров, учителей и школьников, интересующихся налоговым законодательством и обучением IT.",
+      },
+      result: {
+        ...mockAnalyzeResult,
+        group_name: "ДИО-Консалт - официальный партнер фирмы 1С",
+        metrics: {
+          ...mockAnalyzeResult.metrics,
+          total_posts_analyzed: 20,
+          average_likes: 0,
+          average_comments: 13,
+        },
+      },
+    },
+  ];
+
   const mainColSpanClass =
     mode === "analyze" || (mode === "generate" && !isKnowledgeExpanded)
       ? "xl:col-span-12"
@@ -448,8 +525,127 @@ export default function SmmPage() {
     }));
   }, [knowledgeItems]);
 
+  const fetchAnalyzeHistory = async (page = 1, isLoadMore = false) => {
+    if (isLoadMore) setLoadingMore(true);
+    else setHistoryLoading(true);
+    setHistoryError("");
+
+    try {
+      const data = await SmmApi.history(page, HISTORY_PAGE_LIMIT);
+      const newItems = data?.results || [];
+
+      if (isLoadMore) {
+        setHistoryData((prev) => [...prev, ...newItems]);
+      } else {
+        setHistoryData(newItems);
+      }
+
+      setCurrentPage(page);
+      setHasMore(Boolean(data?.next) || newItems.length === HISTORY_PAGE_LIMIT);
+      setHistoryUsingMock(false);
+    } catch (error) {
+      const message = error?.message || "";
+
+      if (isConnectionErrorMessage(message)) {
+        const mockItems = createMockAnalyzeHistory();
+        setHistoryUsingMock(true);
+        setHistoryError("");
+
+        if (isLoadMore) {
+          setHasMore(false);
+        } else {
+          setHistoryData(mockItems);
+          setCurrentPage(1);
+          setHasMore(false);
+        }
+      } else {
+        if (!isLoadMore) {
+          setHistoryData([]);
+          setHasMore(false);
+        }
+        setHistoryUsingMock(false);
+        setHistoryError(error.message || "Не удалось загрузить историю анализов.");
+      }
+    } finally {
+      setHistoryLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const openAnalyzeHistory = () => {
+    setShowAnalyzeHistory(true);
+
+    if (!historyHasLoaded) {
+      setHistoryHasLoaded(true);
+      fetchAnalyzeHistory(1, false);
+    }
+  };
+
+  const hideAnalyzeHistory = () => {
+    setShowAnalyzeHistory(false);
+  };
+
+  const loadMoreAnalyzeHistory = () => {
+    if (!hasMore || loadingMore) return;
+    fetchAnalyzeHistory(currentPage + 1, true);
+  };
+
+  const openAnalyzeHistoryItem = (item) => {
+    if (!item?.result) return;
+    setAnalyzeResult(item.result);
+    setAnalyzeError("");
+    setShowAnalyzeHistory(false);
+  };
+
+  const deleteAnalyzeHistoryItem = async (id) => {
+    if (historyMutationLoading) return;
+
+    setHistoryMutationLoading(true);
+    setHistoryError("");
+
+    try {
+      await SmmApi.deleteHistoryItem(id);
+      setHistoryData((prev) => prev.filter((item) => String(item.id) !== String(id)));
+      setHistoryUsingMock(false);
+    } catch (error) {
+      if (isConnectionErrorMessage(error?.message || "")) {
+        setHistoryUsingMock(true);
+        setHistoryData((prev) => prev.filter((item) => String(item.id) !== String(id)));
+      } else {
+        setHistoryError(error.message || "Не удалось удалить запись истории.");
+      }
+    } finally {
+      setHistoryMutationLoading(false);
+    }
+  };
+
+  const clearAnalyzeHistory = async () => {
+    if (historyMutationLoading) return;
+
+    setHistoryMutationLoading(true);
+    setHistoryError("");
+
+    try {
+      await SmmApi.clearHistory();
+      setHistoryData([]);
+      setHasMore(false);
+      setHistoryUsingMock(false);
+    } catch (error) {
+      if (isConnectionErrorMessage(error?.message || "")) {
+        setHistoryUsingMock(true);
+        setHistoryData([]);
+        setHasMore(false);
+      } else {
+        setHistoryError(error.message || "Не удалось очистить историю.");
+      }
+    } finally {
+      setHistoryMutationLoading(false);
+    }
+  };
+
   const handleAnalyzeSubmit = async (event) => {
     event.preventDefault();
+    setShowAnalyzeHistory(false);
     setAnalyzeError("");
     setAnalyzeLoading(true);
 
@@ -464,13 +660,7 @@ export default function SmmPage() {
     } catch (error) {
       const message = error?.message || "";
 
-      const isConnectionError =
-        message.includes("ERR_CONNECTION_REFUSED") ||
-        message.includes("Network Error") ||
-        message.includes("Failed to fetch") ||
-        message.includes("fetch");
-
-      if (isConnectionError) {
+      if (isConnectionErrorMessage(message)) {
         setAnalyzeResult({
           ...mockAnalyzeResult,
           group_name: analyzeForm.source.trim() || mockAnalyzeResult.group_name,
@@ -514,13 +704,7 @@ export default function SmmPage() {
     } catch (error) {
       const message = error?.message || "";
 
-      const isConnectionError =
-        message.includes("ERR_CONNECTION_REFUSED") ||
-        message.includes("Network Error") ||
-        message.includes("Failed to fetch") ||
-        message.includes("fetch");
-
-      if (isConnectionError) {
+      if (isConnectionErrorMessage(message)) {
         const fallbackResult = {
           ...mockGenerateResult,
           content_type:
@@ -763,6 +947,7 @@ export default function SmmPage() {
   const analyzeTopPosts = analyzeResult?.metrics?.top_posts || [];
   const analyzeCompetitors = analyzeResult?.ai?.competitors || [];
   const analyzeRecommendations = analyzeResult?.ai?.recommendations || [];
+  const hasHistoryItems = historyData.length > 0;
   const groupTitle =
     analyzeResult?.group_name ||
     analyzeResult?.title ||
@@ -898,15 +1083,152 @@ export default function SmmPage() {
                           </button>
                           <button
                             type="button"
+                            onClick={showAnalyzeHistory ? hideAnalyzeHistory : openAnalyzeHistory}
                             className="px-6 py-4 rounded-2xl font-medium border border-neutral-700 hover:border-red-500/50 hover:text-white text-neutral-200 transition-colors whitespace-nowrap flex items-center justify-center gap-2"
                           >
                             <History className="w-4 h-4" />
-                            История
+                            {showAnalyzeHistory ? "Скрыть историю" : "История"}
                           </button>
                         </div>
                       </div>
                     </form>
 
+                    {showAnalyzeHistory ? (
+                      <div className="mt-8 space-y-5">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <h3 className="text-3xl font-semibold">История анализов</h3>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={clearAnalyzeHistory}
+                              disabled={historyMutationLoading || historyLoading || !hasHistoryItems}
+                              className="px-5 py-2 rounded-2xl border border-neutral-700 text-neutral-200 hover:border-red-500/50 hover:text-white disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Очистить историю
+                            </button>
+                            <button
+                              type="button"
+                              onClick={hideAnalyzeHistory}
+                              className="px-5 py-2 rounded-2xl border border-neutral-700 text-neutral-200 hover:border-red-500/50 hover:text-white transition-colors"
+                            >
+                              Скрыть историю
+                            </button>
+                          </div>
+                        </div>
+
+                        {historyUsingMock && (
+                          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-200 text-sm">
+                            Бэкенд недоступен, поэтому показаны демонстрационные данные истории.
+                          </div>
+                        )}
+
+                        {historyError && (
+                          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
+                            {historyError}
+                          </div>
+                        )}
+
+                        {historyLoading && !hasHistoryItems ? (
+                          <div className="py-16 flex flex-col items-center justify-center text-neutral-500">
+                            <Loader2 className="w-10 h-10 animate-spin mb-4" />
+                            <p>Загружаем историю анализов...</p>
+                          </div>
+                        ) : !historyError && !hasHistoryItems ? (
+                          <div className="py-16 border border-dashed border-neutral-700 rounded-2xl text-center text-neutral-500">
+                            <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                            <p className="text-lg">История анализов пока пуста</p>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                              {historyData.map((item, index) => {
+                                const itemTitle =
+                                  item?.source?.name ||
+                                  item?.result?.group_name ||
+                                  item?.group_name ||
+                                  "VK-группа";
+                                const itemHandle =
+                                  item?.source?.handle ||
+                                  item?.source?.screen_name ||
+                                  item?.screen_name ||
+                                  "";
+                                const itemSummary =
+                                  item?.ai?.summary ||
+                                  item?.result?.ai?.summary ||
+                                  "Сводка недоступна.";
+
+                                return (
+                                  <div
+                                    key={`${item.id || "history"}-${index}`}
+                                    className="bg-dark-800 border border-neutral-800 rounded-3xl p-5"
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div>
+                                        <div className="text-2xl font-semibold text-white leading-snug">
+                                          {itemTitle}
+                                        </div>
+                                        <div className="mt-1 text-neutral-400">
+                                          {itemHandle || "-"} · {formatHistoryDateTime(item.created_at)}
+                                        </div>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => deleteAnalyzeHistoryItem(item.id)}
+                                        disabled={historyMutationLoading}
+                                        className="px-4 py-2 rounded-2xl border border-red-500/30 text-white bg-neutral-800 hover:bg-neutral-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                      >
+                                        Удалить
+                                      </button>
+                                    </div>
+
+                                    <div className="mt-4 text-neutral-300 text-sm">
+                                      Постов: {formatNumber(item?.metrics?.total_posts_analyzed || 0)} · Лайки:{" "}
+                                      {formatNumber(item?.metrics?.average_likes || 0)} · Комм.:{" "}
+                                      {formatNumber(item?.metrics?.average_comments || 0)}
+                                    </div>
+
+                                    <div className="mt-3 text-neutral-200 text-sm leading-relaxed">
+                                      {itemSummary}
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => openAnalyzeHistoryItem(item)}
+                                      className="mt-5 px-5 py-2 rounded-2xl bg-red-600 hover:bg-red-500 transition-colors inline-flex items-center gap-2"
+                                    >
+                                      Открыть результат
+                                      <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {hasMore && !historyUsingMock && (
+                              <div className="flex justify-center pt-2">
+                                <button
+                                  type="button"
+                                  onClick={loadMoreAnalyzeHistory}
+                                  disabled={loadingMore}
+                                  className="px-8 py-3 rounded-2xl bg-neutral-800 hover:bg-neutral-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+                                >
+                                  {loadingMore ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                      Загрузка...
+                                    </>
+                                  ) : (
+                                    "Загрузить ещё"
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <>
                     {analyzeError && (
                       <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
                         {analyzeError}
@@ -1152,6 +1474,8 @@ export default function SmmPage() {
                           </div>
                         </div>
                       )
+                    )}
+                      </>
                     )}
                   </div>
                 </div>
