@@ -145,7 +145,7 @@ export default function PromotionPage() {
                   <button
                     onClick={onAnalyze}
                     disabled={!state.url.trim() || state.loading}
-                    className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed px-8 py-4 rounded-2xl font-medium transition-colors whitespace-normal break-words flex-[1_1_280px] lg:flex-[0_0_auto]"
+                    className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed px-8 py-4 rounded-2xl font-medium transition-colors whitespace-normal wrap-break-word flex-[1_1_280px] lg:flex-[0_0_auto]"
                   >
                     {state.loading
                       ? "Выполняется анализ. Примерное время — не более 3 минут."
@@ -163,7 +163,7 @@ export default function PromotionPage() {
               </div>
             )}
 
-            <div className="w-full bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 lg:p-10 overflow-auto min-h-[540px]">
+            <div className="w-full bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 lg:p-10 overflow-auto min-h-135">
               {history.showHistory ? (
                 <div className="space-y-8">
                   <div className="flex items-center justify-between gap-4">
@@ -318,7 +318,7 @@ export default function PromotionPage() {
                       </div>
 
                       <div className="rounded-3xl border border-neutral-800 bg-dark-800/50 p-6 lg:p-8 h-full">
-                        <pre className="text-sm text-neutral-200 whitespace-pre-wrap break-words">
+                        <pre className="text-sm text-neutral-200 whitespace-pre-wrap wrap-break-word">
                           {JSON.stringify(getInterlinkingResult(), null, 2)}
                         </pre>
                       </div>
@@ -334,7 +334,7 @@ export default function PromotionPage() {
           </div>
 
           {showRightPanel && (
-            <div className="w-full lg:w-[420px] lg:shrink-0">
+            <div className="w-full lg:w-105 lg:shrink-0">
               <div className="lg:sticky lg:top-28 flex flex-col gap-4 h-auto lg:h-[calc(100vh-8rem)]">
                 <button
                   onClick={handleMainAction}
@@ -352,7 +352,7 @@ export default function PromotionPage() {
                 </button>
 
                 {!state.showInterlinking && (
-                  <div className="flex-1 min-h-[420px] lg:min-h-0">
+                  <div className="flex-1 min-h-105 lg:min-h-0">
                     {state.chatOpen ? (
                       <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl flex flex-col h-full overflow-hidden shadow-xl">
                         <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-800 shrink-0">
@@ -397,7 +397,7 @@ export default function PromotionPage() {
                                 }`}
                               >
                                 {msg.type === "user" ? (
-                                  <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                                  <p className="whitespace-pre-wrap wrap-break-word">{msg.text}</p>
                                 ) : (
                                   <MarkdownMessage text={msg.text} />
                                 )}
