@@ -43,7 +43,7 @@ export default function CustomSelect({
             <span className="text-lg">{selectedOption.icon}</span>
           )}
           <div className="text-left">
-            <div className="font-medium">{selectedOption?.label}</div>
+            <div className="text-base font-medium">{selectedOption?.label}</div>
             {selectedOption?.description && (
               <div className="text-base text-neutral-500">
                 {selectedOption.description}
@@ -90,7 +90,7 @@ export default function CustomSelect({
                     )}
                     <div>
                       <div
-                        className={`font-medium ${
+                        className={`text-base font-medium ${
                           option.value === value
                             ? "text-red-400"
                             : "text-white"

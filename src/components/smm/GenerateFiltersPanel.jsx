@@ -52,7 +52,7 @@ export default function GenerateFiltersPanel({
                 }))
               }
               placeholder="Например: маркетинг"
-              className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white placeholder:text-neutral-500"
+              className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-base text-white placeholder:text-neutral-500"
             />
           </FieldGroup>
 
@@ -66,7 +66,7 @@ export default function GenerateFiltersPanel({
                 }))
               }
               placeholder="Например: дружелюбный"
-              className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white placeholder:text-neutral-500"
+              className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-base text-white placeholder:text-neutral-500"
             />
           </FieldGroup>
 

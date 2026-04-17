@@ -43,6 +43,8 @@ const initialAnalyzeForm = {
   source: "",
   post_limit: 30,
   language: "ru",
+  date_from: "",
+  date_to: "",
 };
 
 const initialGenerateForm = {
@@ -67,6 +69,30 @@ const languageOptions = [
     label: "English",
     flag: "🇬🇧",
     description: "Английский язык",
+  },
+  {
+    value: "zh",
+    label: "中文",
+    flag: "🇨🇳",
+    description: "Китайский язык",
+  },
+  {
+    value: "es",
+    label: "Español",
+    flag: "🇪🇸",
+    description: "Испанский язык",
+  },
+  {
+    value: "de",
+    label: "Deutsch",
+    flag: "🇩🇪",
+    description: "Немецкий язык",
+  },
+  {
+    value: "fr",
+    label: "Français",
+    flag: "🇫🇷",
+    description: "Французский язык",
   },
 ];
 
@@ -274,7 +300,7 @@ const mockGenerateResult = {
 function MetricsCard({ label, value }) {
   return (
     <div className="bg-dark-800 border border-neutral-800 rounded-2xl p-5">
-      <div className="text-sm text-neutral-400">{label}</div>
+      <div className="text-base text-neutral-400">{label}</div>
       <div className="mt-4 text-5xl font-bold tracking-tight text-white">
         {value}
       </div>
@@ -647,14 +673,26 @@ export default function SmmPage() {
     event.preventDefault();
     setShowAnalyzeHistory(false);
     setAnalyzeError("");
+
+    const dateFrom = String(analyzeForm.date_from || "").trim();
+    const dateTo = String(analyzeForm.date_to || "").trim();
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      setAnalyzeError("Дата начала периода не может быть позже даты окончания.");
+      return;
+    }
+
     setAnalyzeLoading(true);
 
     try {
-      const data = await SmmApi.analyzeGroup({
+      const payload = {
         source: analyzeForm.source.trim(),
         post_limit: Number(analyzeForm.post_limit) || 30,
         language: analyzeForm.language,
-      });
+      };
+      if (dateFrom) payload.date_from = dateFrom;
+      if (dateTo) payload.date_to = dateTo;
+
+      const data = await SmmApi.analyzeGroup(payload);
 
       setAnalyzeResult(data);
     } catch (error) {
@@ -977,10 +1015,10 @@ export default function SmmPage() {
                       <div className="w-8 h-8 bg-red-500/10 rounded-xl flex items-center justify-center">
                         <Bot className="w-4 h-4 text-red-400" />
                       </div>
-                      <div className="font-semibold">Фильтры анализа</div>
+                      <div className="font-semibold text-2xl">Фильтры анализа</div>
                     </div>
                     <span
-                      className={`text-neutral-500 text-xs transition-transform duration-300 ${
+                      className={`text-neutral-500 text-sm transition-transform duration-300 ${
                         isFiltersOpen ? "rotate-180" : ""
                       }`}
                     >
@@ -991,14 +1029,14 @@ export default function SmmPage() {
                   <div
                     className={`overflow-hidden transition-all duration-300 ease-out ${
                       isFiltersOpen
-                        ? "mt-4 max-h-64 opacity-100"
+                        ? "mt-4 max-h-105 opacity-100"
                         : "mt-0 max-h-0 opacity-0"
                     }`}
                   >
                     <div className="px-5 pb-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm text-neutral-400 mb-2">
+                          <label className="block text-base text-neutral-400 mb-2">
                             Лимит постов
                           </label>
                           <input
@@ -1012,12 +1050,12 @@ export default function SmmPage() {
                                 post_limit: e.target.value,
                               }))
                             }
-                            className="w-full h-[50px] bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white"
+                            className="w-full h-12.5 bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm text-neutral-400 mb-2">
+                          <label className="block text-base text-neutral-400 mb-2">
                             Язык ответа
                           </label>
                           <CustomSelect
@@ -1030,6 +1068,46 @@ export default function SmmPage() {
                             }
                             options={languageOptions}
                           />
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <label className="block text-base text-neutral-400 mb-2">
+                            Период постов
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-base text-neutral-500 mb-2">
+                                С
+                              </label>
+                              <input
+                                type="date"
+                                value={analyzeForm.date_from}
+                                onChange={(e) =>
+                                  setAnalyzeForm((prev) => ({
+                                    ...prev,
+                                    date_from: e.target.value,
+                                  }))
+                                }
+                                className="w-full h-12.5 bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-base text-neutral-500 mb-2">
+                                По
+                              </label>
+                              <input
+                                type="date"
+                                value={analyzeForm.date_to}
+                                onChange={(e) =>
+                                  setAnalyzeForm((prev) => ({
+                                    ...prev,
+                                    date_to: e.target.value,
+                                  }))
+                                }
+                                className="w-full h-12.5 bg-dark-800 border border-neutral-700 focus:border-red-500 rounded-2xl px-4 text-white"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1051,14 +1129,14 @@ export default function SmmPage() {
                 <div className="xl:col-span-12 w-full">
                   <div className="bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl p-8 lg:p-10 overflow-y-auto flex flex-col">
                     <h2 className="text-2xl font-semibold">Анализ VK-группы</h2>
-                    <p className="mt-2 text-neutral-400 text-sm">
+                    <p className="mt-2 text-neutral-400 text-base">
                       Введите ссылку или идентификатор группы, затем получите
                       разбор метрик, рекомендаций и конкурентов.
                     </p>
 
                     <form onSubmit={handleAnalyzeSubmit} className="mt-6 space-y-4">
                       <div>
-                        <label className="block text-sm text-neutral-400 mb-2">
+                        <label className="block text-base text-neutral-400 mb-2">
                           Ссылка / screen_name / id
                         </label>
                         <div className="flex gap-4 max-[1024px]:flex-wrap">
@@ -1105,13 +1183,6 @@ export default function SmmPage() {
                               className="px-5 py-2 rounded-2xl border border-neutral-700 text-neutral-200 hover:border-red-500/50 hover:text-white disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                             >
                               Очистить историю
-                            </button>
-                            <button
-                              type="button"
-                              onClick={hideAnalyzeHistory}
-                              className="px-5 py-2 rounded-2xl border border-neutral-700 text-neutral-200 hover:border-red-500/50 hover:text-white transition-colors"
-                            >
-                              Скрыть историю
                             </button>
                           </div>
                         </div>
@@ -1429,11 +1500,11 @@ export default function SmmPage() {
                             AI-помощник
                           </div>
 
-                          <div className="space-y-3 mb-6 max-h-[320px] overflow-y-auto pr-1 custom-scroll">
+                          <div className="space-y-3 mb-6 max-h-80 overflow-y-auto pr-1 custom-scroll">
                             {assistantMessages.map((message) => (
                               <div
                                 key={message.id}
-                                className={`rounded-2xl px-4 py-3 text-sm ${
+                                className={`rounded-2xl px-4 py-3 text-base ${
                                   message.type === "user"
                                     ? "bg-red-600 text-white ml-6"
                                     : "bg-neutral-900 text-neutral-200 mr-6 border border-neutral-800"
@@ -1445,17 +1516,22 @@ export default function SmmPage() {
                           </div>
 
                           <div className="flex gap-4 items-end max-lg:flex-col">
-                            <textarea
-                              value={improvementQuestion}
-                              onChange={(e) => setImprovementQuestion(e.target.value)}
-                              rows={4}
-                              placeholder="Введите вопрос по улучшению"
-                              className="flex-1 w-full bg-neutral-900 border border-neutral-700 focus:border-red-500 rounded-2xl px-6 py-4 text-white text-lg placeholder:text-neutral-500 resize-none"
-                            />
+                            <div className="flex-1 w-full">
+                              <label className="block text-base text-neutral-400 mb-2">
+                                Введите вопрос по улучшению
+                              </label>
+                              <textarea
+                                value={improvementQuestion}
+                                onChange={(e) => setImprovementQuestion(e.target.value)}
+                                rows={4}
+                                placeholder="Введите вопрос по улучшению"
+                                className="w-full bg-neutral-900 border border-neutral-700 focus:border-red-500 rounded-2xl px-6 py-4 text-white text-lg placeholder:text-neutral-500 resize-none"
+                              />
+                            </div>
                             <button
                               type="button"
                               onClick={handleImprovementQuestion}
-                              className="bg-red-600 hover:bg-red-500 px-10 py-4 rounded-2xl font-medium transition-colors whitespace-nowrap min-w-[180px]"
+                              className="bg-red-600 hover:bg-red-500 px-10 py-4 rounded-2xl font-medium transition-colors whitespace-nowrap min-w-45"
                             >
                               Отправить
                             </button>
@@ -1464,7 +1540,7 @@ export default function SmmPage() {
                       </div>
                     ) : (
                       !analyzeError && (
-                        <div className="mt-8 border border-dashed border-neutral-700 rounded-2xl p-8 text-center text-neutral-500 flex-1 flex items-center justify-center min-h-[420px]">
+                        <div className="mt-8 border border-dashed border-neutral-700 rounded-2xl p-8 text-center text-neutral-500 flex-1 flex items-center justify-center min-h-105">
                           <div>
                             <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
                             <p className="text-lg">Запустите анализ группы</p>
@@ -1506,7 +1582,7 @@ export default function SmmPage() {
                   >
                     {isKnowledgeExpanded ? (
                       <div
-                        className="p-6 lg:p-7 flex-1 flex flex-col min-h-[780px]"
+                        className="p-6 lg:p-7 flex-1 flex flex-col min-h-195"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex items-start justify-between gap-4 mb-5">
@@ -1573,7 +1649,7 @@ export default function SmmPage() {
                                 <div className="text-2xl font-semibold text-white mb-4">
                                   Добавить текст
                                 </div>
-                                <div className="text-xs uppercase tracking-wider text-neutral-500 mb-2">
+                                <div className="text-sm uppercase tracking-wider text-neutral-500 mb-2">
                                   Текст
                                 </div>
                                 <textarea
@@ -1581,12 +1657,12 @@ export default function SmmPage() {
                                   onChange={(e) => setKnowledgeText(e.target.value)}
                                   rows={8}
                                   placeholder="Правила, шаблоны, ограничения..."
-                                  className="w-full bg-[#171717] border border-neutral-800 focus:border-red-500 rounded-[26px] px-6 py-5 text-white placeholder:text-neutral-600 resize-none"
+                                  className="w-full bg-dark-700 border border-neutral-800 focus:border-red-500 rounded-[26px] px-6 py-5 text-white placeholder:text-neutral-600 resize-none"
                                 />
                                 <button
                                   type="button"
                                   onClick={handleKnowledgeSave}
-                                  className="mt-5 w-full h-16 rounded-[24px] bg-red-600 hover:bg-red-500 text-white text-xl lg:text-2xl font-semibold transition-colors"
+                                  className="mt-5 w-full h-16 rounded-3xl bg-red-600 hover:bg-red-500 text-white text-xl lg:text-2xl font-semibold transition-colors"
                                 >
                                   Сохранить текст
                                 </button>
@@ -1598,14 +1674,14 @@ export default function SmmPage() {
                                 <div className="text-2xl font-semibold text-white mb-4">
                                   Добавить ссылку
                                 </div>
-                                <div className="text-xs uppercase tracking-wider text-neutral-500 mb-2">
+                                <div className="text-sm uppercase tracking-wider text-neutral-500 mb-2">
                                   Ссылка
                                 </div>
                                 <input
                                   value={knowledgeLink}
                                   onChange={(e) => setKnowledgeLink(e.target.value)}
                                   placeholder="https://example.com/article"
-                                  className="w-full h-[60px] bg-[#171717] border border-neutral-800 focus:border-red-500 rounded-[22px] px-5 text-white placeholder:text-neutral-600"
+                                  className="w-full h-15 bg-dark-700 border border-neutral-800 focus:border-red-500 rounded-[22px] px-5 text-white placeholder:text-neutral-600"
                                 />
                                 <button
                                   type="button"
@@ -1622,14 +1698,14 @@ export default function SmmPage() {
                                 <div className="text-2xl font-semibold text-white mb-4">
                                   Добавить файл
                                 </div>
-                                <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-700 hover:border-red-500/50 rounded-[26px] py-12 px-6 cursor-pointer transition-colors bg-[#171717]">
+                                <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-700 hover:border-red-500/50 rounded-[26px] py-12 px-6 cursor-pointer transition-colors bg-dark-700">
                                   <Upload className="w-12 h-12 text-neutral-500 mb-4" />
                                   <p className="text-sm text-neutral-400 text-center">
                                     Перетащите файлы сюда
                                     <br />
                                     или нажмите для выбора
                                   </p>
-                                  <p className="text-xs text-neutral-500 mt-3">
+                                  <p className="text-sm text-neutral-500 mt-3">
                                     PDF, DOCX, TXT, XLSX, PPTX
                                   </p>
                                   <input
@@ -1648,12 +1724,12 @@ export default function SmmPage() {
                                 <div className="text-2xl font-semibold text-white mb-4">
                                   Добавить картинку
                                 </div>
-                                <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-700 hover:border-red-500/50 rounded-[26px] py-12 px-6 cursor-pointer transition-colors bg-[#171717]">
+                                <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-700 hover:border-red-500/50 rounded-[26px] py-12 px-6 cursor-pointer transition-colors bg-dark-700">
                                   <Image className="w-12 h-12 text-neutral-500 mb-4" />
                                   <p className="text-sm text-neutral-400 text-center">
                                     Загрузите изображение в базу знаний
                                   </p>
-                                  <p className="text-xs text-neutral-500 mt-3">
+                                  <p className="text-sm text-neutral-500 mt-3">
                                     JPG, PNG, WEBP
                                   </p>
                                   <input
@@ -1707,7 +1783,7 @@ export default function SmmPage() {
                     ) : (
                       <div className="flex-1 flex flex-col items-center justify-center gap-2">
                         <Upload className="w-8 h-8 text-red-400" />
-                        <span className="text-xs text-neutral-400">
+                        <span className="text-sm text-neutral-400">
                           База знаний
                         </span>
                       </div>
@@ -1747,10 +1823,10 @@ export default function SmmPage() {
                         <button
                           type="button"
                           onClick={() => setMode("analyze")}
-                          className="w-full h-[115px] rounded-3xl bg-red-600 hover:bg-red-500 transition-all p-5 flex flex-col items-center justify-center gap-2"
+                          className="w-full h-28.75 rounded-3xl bg-red-600 hover:bg-red-500 transition-all p-5 flex flex-col items-center justify-center gap-2"
                         >
                           <Bot className="w-8 h-8 text-white transition-transform" />
-                          <div className="text-xs font-medium text-white text-center leading-tight">
+                          <div className="text-sm font-medium text-white text-center leading-tight">
                             Анализ
                             <br />
                             VK-групп
@@ -1761,13 +1837,13 @@ export default function SmmPage() {
                   </div>
 
                   {isKnowledgeExpanded && (
-                    <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl flex flex-col overflow-hidden min-h-[200px]">
+                    <div className="flex-1 bg-neutral-900/70 backdrop-blur-md border border-neutral-800 rounded-3xl flex flex-col overflow-hidden min-h-50">
                       <div className="group flex-1 p-6 flex flex-col items-center justify-center gap-4 hover:bg-neutral-800/70 transition-all rounded-3xl">
                         <Image className="w-14 h-14 text-red-400 group-hover:scale-110 transition-transform" />
                         <div className="text-sm font-semibold text-neutral-200 text-center">
                           Генерация контента
                         </div>
-                        <div className="text-xs text-neutral-500 text-center max-w-[160px]">
+                        <div className="text-sm text-neutral-500 text-center max-w-40">
                           Промпт + генерация поста
                         </div>
                       </div>
@@ -1884,10 +1960,10 @@ export default function SmmPage() {
                   {isKnowledgeExpanded ? (
                     <div
                       onClick={() => setMode("analyze")}
-                      className="group bg-red-600 hover:bg-red-500 transition-all rounded-3xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer min-h-[92px]"
+                      className="group bg-red-600 hover:bg-red-500 transition-all rounded-3xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer min-h-23"
                     >
                       <Bot className="w-8 h-8 text-white group-hover:scale-110 transition-transform" />
-                      <div className="text-xs font-medium text-white text-center">
+                      <div className="text-sm font-medium text-white text-center">
                         Анализ
                         <br />
                         VK-групп
@@ -1912,7 +1988,7 @@ export default function SmmPage() {
 
       {showFileListModal &&
         createPortal(
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="bg-dark-800 border border-neutral-700 rounded-3xl w-full max-w-lg p-6 shadow-2xl">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Загруженные файлы</h3>
@@ -1936,7 +2012,7 @@ export default function SmmPage() {
                       className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm"
                     >
                       <div className="font-medium truncate">{file.name}</div>
-                      <div className="text-xs text-neutral-500 mt-1">
+                      <div className="text-sm text-neutral-500 mt-1">
                         {(file.size / 1024).toFixed(1)} KB ·{" "}
                         {file.type || "неизвестный тип"}
                       </div>

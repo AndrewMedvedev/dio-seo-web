@@ -146,7 +146,7 @@ export default function ContentGenerationPage() {
           response?.answer ||
           response?.message ||
           response?.response ||
-          "Backend вернул пустой ответ.",
+          "Backend пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.",
       };
 
       setMessages((prev) => [...prev, aiReply]);
