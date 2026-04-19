@@ -396,6 +396,16 @@ export default function SmmPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [historyMutationLoading, setHistoryMutationLoading] = useState(false);
   const [generateError, setGenerateError] = useState("");
+  const [showGenerateHistory, setShowGenerateHistory] = useState(false);
+  const [generateHistoryData, setGenerateHistoryData] = useState([]);
+  const [generateHistoryLoading, setGenerateHistoryLoading] = useState(false);
+  const [generateHistoryError, setGenerateHistoryError] = useState("");
+  const [generateHistoryUsingMock, setGenerateHistoryUsingMock] = useState(false);
+  const [generateHistoryHasLoaded, setGenerateHistoryHasLoaded] = useState(false);
+  const [generateHistoryPage, setGenerateHistoryPage] = useState(1);
+  const [generateHistoryHasMore, setGenerateHistoryHasMore] = useState(true);
+  const [generateHistoryLoadingMore, setGenerateHistoryLoadingMore] = useState(false);
+  const [generateHistoryMutationLoading, setGenerateHistoryMutationLoading] = useState(false);
   const [regenerateImageError, setRegenerateImageError] = useState("");
   const [publishError, setPublishError] = useState("");
   const [publishSuccess, setPublishSuccess] = useState("");
@@ -519,6 +529,31 @@ export default function SmmPage() {
           average_likes: 0,
           average_comments: 13,
         },
+      },
+    },
+  ];
+
+  const createMockGenerateHistory = () => [
+    {
+      id: "mock-generate-1",
+      created_at: new Date(Date.now() - 11 * 60 * 1000).toISOString(),
+      prompt: "пост про наших сотрудников 1с компании",
+      content_type: "text",
+      result: {
+        ...mockGenerateResult,
+        content_type: "text",
+        text: mockGenerateResult.text,
+      },
+    },
+    {
+      id: "mock-generate-2",
+      created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      prompt: "напиши пост про наших любимых 1с-ников в компании",
+      content_type: "image",
+      result: {
+        ...mockGenerateResult,
+        content_type: "image",
+        text: "Наши 1С-ники — команда, которая каждый день превращает сложные процессы в понятные решения и помогает бизнесу расти.",
       },
     },
   ];
@@ -669,6 +704,126 @@ export default function SmmPage() {
     }
   };
 
+  const fetchGenerateHistory = async (page = 1, isLoadMore = false) => {
+    if (isLoadMore) setGenerateHistoryLoadingMore(true);
+    else setGenerateHistoryLoading(true);
+    setGenerateHistoryError("");
+
+    try {
+      const data = await SmmApi.generateHistory(page, HISTORY_PAGE_LIMIT);
+      const newItems = data?.results || [];
+
+      if (isLoadMore) {
+        setGenerateHistoryData((prev) => [...prev, ...newItems]);
+      } else {
+        setGenerateHistoryData(newItems);
+      }
+
+      setGenerateHistoryPage(page);
+      setGenerateHistoryHasMore(Boolean(data?.next) || newItems.length === HISTORY_PAGE_LIMIT);
+      setGenerateHistoryUsingMock(false);
+    } catch (error) {
+      const message = error?.message || "";
+
+      if (isConnectionErrorMessage(message)) {
+        const mockItems = createMockGenerateHistory();
+        setGenerateHistoryUsingMock(true);
+        setGenerateHistoryError("");
+
+        if (isLoadMore) {
+          setGenerateHistoryHasMore(false);
+        } else {
+          setGenerateHistoryData(mockItems);
+          setGenerateHistoryPage(1);
+          setGenerateHistoryHasMore(false);
+        }
+      } else {
+        if (!isLoadMore) {
+          setGenerateHistoryData([]);
+          setGenerateHistoryHasMore(false);
+        }
+        setGenerateHistoryUsingMock(false);
+        setGenerateHistoryError(error.message || "Не удалось загрузить историю генераций.");
+      }
+    } finally {
+      setGenerateHistoryLoading(false);
+      setGenerateHistoryLoadingMore(false);
+    }
+  };
+
+  const openGenerateHistory = () => {
+    setShowGenerateHistory(true);
+
+    if (!generateHistoryHasLoaded) {
+      setGenerateHistoryHasLoaded(true);
+      fetchGenerateHistory(1, false);
+    }
+  };
+
+  const hideGenerateHistory = () => {
+    setShowGenerateHistory(false);
+  };
+
+  const loadMoreGenerateHistory = () => {
+    if (!generateHistoryHasMore || generateHistoryLoadingMore) return;
+    fetchGenerateHistory(generateHistoryPage + 1, true);
+  };
+
+  const openGenerateHistoryItem = (item) => {
+    if (!item?.result) return;
+    setGenerateResult(item.result);
+    setEditedText(item.result.text || "");
+    setEditedImagePrompt(item.result.image_prompt || "");
+    setGenerateError("");
+    setShowGenerateHistory(false);
+  };
+
+  const deleteGenerateHistoryItem = async (id) => {
+    if (generateHistoryMutationLoading) return;
+
+    setGenerateHistoryMutationLoading(true);
+    setGenerateHistoryError("");
+
+    try {
+      await SmmApi.deleteGenerateHistoryItem(id);
+      setGenerateHistoryData((prev) => prev.filter((item) => String(item.id) !== String(id)));
+      setGenerateHistoryUsingMock(false);
+    } catch (error) {
+      if (isConnectionErrorMessage(error?.message || "")) {
+        setGenerateHistoryUsingMock(true);
+        setGenerateHistoryData((prev) => prev.filter((item) => String(item.id) !== String(id)));
+      } else {
+        setGenerateHistoryError(error.message || "Не удалось удалить запись истории генераций.");
+      }
+    } finally {
+      setGenerateHistoryMutationLoading(false);
+    }
+  };
+
+  const clearGenerateHistory = async () => {
+    if (generateHistoryMutationLoading) return;
+
+    setGenerateHistoryMutationLoading(true);
+    setGenerateHistoryError("");
+
+    try {
+      await SmmApi.clearGenerateHistory();
+      setGenerateHistoryData([]);
+      setGenerateHistoryHasMore(false);
+      setGenerateHistoryUsingMock(false);
+    } catch (error) {
+      if (isConnectionErrorMessage(error?.message || "")) {
+        setGenerateHistoryUsingMock(true);
+        setGenerateHistoryData([]);
+        setGenerateHistoryHasMore(false);
+      } else {
+        setGenerateHistoryError(error.message || "Не удалось очистить историю генераций.");
+      }
+    } finally {
+      setGenerateHistoryMutationLoading(false);
+    }
+  };
+
   const handleAnalyzeSubmit = async (event) => {
     event.preventDefault();
     setShowAnalyzeHistory(false);
@@ -718,6 +873,7 @@ export default function SmmPage() {
 
   const handleGenerateSubmit = async (event) => {
     event.preventDefault();
+    setShowGenerateHistory(false);
     setGenerateError("");
     setPublishError("");
     setPublishSuccess("");
@@ -986,6 +1142,7 @@ export default function SmmPage() {
   const analyzeCompetitors = analyzeResult?.ai?.competitors || [];
   const analyzeRecommendations = analyzeResult?.ai?.recommendations || [];
   const hasHistoryItems = historyData.length > 0;
+  const hasGenerateHistoryItems = generateHistoryData.length > 0;
   const groupTitle =
     analyzeResult?.group_name ||
     analyzeResult?.title ||
@@ -1906,34 +2063,164 @@ export default function SmmPage() {
                             </button>
                             <button
                               type="button"
+                              onClick={showGenerateHistory ? hideGenerateHistory : openGenerateHistory}
                               className="flex-1 border border-neutral-700 hover:border-red-500/50 hover:text-white text-neutral-200 px-6 py-3 rounded-2xl font-medium transition-colors flex items-center justify-center gap-2"
                             >
                               <History className="w-4 h-4" />
-                              История
+                              {showGenerateHistory ? "Скрыть историю" : "История"}
                             </button>
                           </div>
                         </form>
 
-                        <GenerateResultPanel
-                          generateResult={generateResult}
-                          generateLoading={generateLoading}
-                          generateError={generateError}
-                          contentTypeOptions={contentTypeOptions}
-                          editedText={editedText}
-                          setEditedText={setEditedText}
-                          onCopyText={handleCopyText}
-                          onPublish={handlePublish}
-                          publishLoading={publishLoading}
-                          publishError={publishError}
-                          publishSuccess={publishSuccess}
-                          imageDataUrl={imageDataUrl}
-                          editedImagePrompt={editedImagePrompt}
-                          setEditedImagePrompt={setEditedImagePrompt}
-                          onRegenerateImage={handleRegenerateImage}
-                          regenerateImageLoading={regenerateImageLoading}
-                          regenerateImageError={regenerateImageError}
-                          knowledgeMatches={knowledgeMatches}
-                        />
+                        {showGenerateHistory ? (
+                          <div className="mt-6 space-y-5">
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                              <h3 className="text-3xl font-semibold">История генераций</h3>
+                              <button
+                                type="button"
+                                onClick={clearGenerateHistory}
+                                disabled={
+                                  generateHistoryMutationLoading ||
+                                  generateHistoryLoading ||
+                                  !hasGenerateHistoryItems
+                                }
+                                className="px-5 py-2 rounded-2xl border border-neutral-700 text-neutral-200 hover:border-red-500/50 hover:text-white disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                              >
+                                Очистить историю
+                              </button>
+                            </div>
+
+                            {generateHistoryUsingMock && (
+                              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-200 text-sm">
+                                Бэкенд недоступен, поэтому показаны демонстрационные данные истории.
+                              </div>
+                            )}
+
+                            {generateHistoryError && (
+                              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
+                                {generateHistoryError}
+                              </div>
+                            )}
+
+                            {generateHistoryLoading && !hasGenerateHistoryItems ? (
+                              <div className="py-16 flex flex-col items-center justify-center text-neutral-500">
+                                <Loader2 className="w-10 h-10 animate-spin mb-4" />
+                                <p>Загружаем историю генераций...</p>
+                              </div>
+                            ) : !generateHistoryError && !hasGenerateHistoryItems ? (
+                              <div className="py-16 border border-dashed border-neutral-700 rounded-2xl text-center text-neutral-500">
+                                <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                <p className="text-lg">История генераций пока пуста</p>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                  {generateHistoryData.map((item, index) => {
+                                    const itemResult = item?.result || {};
+                                    const itemText = String(itemResult.text || "").trim();
+                                    const prompt = String(item?.prompt || "").trim();
+                                    const contentType = String(
+                                      item?.content_type || itemResult.content_type || "text",
+                                    );
+                                    const contentTypeLabel =
+                                      contentTypeOptions.find((option) => option.value === contentType)
+                                        ?.label || "Текст";
+                                    const preview = itemText || "Содержимое генерации отсутствует.";
+                                    const charCount = itemText.length;
+                                    const wordCount = itemText
+                                      ? itemText.split(/\s+/).filter(Boolean).length
+                                      : 0;
+
+                                    return (
+                                      <div
+                                        key={`${item.id || "generate-history"}-${index}`}
+                                        className="bg-dark-800 border border-neutral-800 rounded-3xl p-5"
+                                      >
+                                        <div className="flex items-start justify-between gap-3">
+                                          <div>
+                                            <div className="text-2xl font-semibold text-white leading-snug">
+                                              {prompt || "Сгенерированный контент"}
+                                            </div>
+                                            <div className="mt-1 text-neutral-400">
+                                              {formatHistoryDateTime(item.created_at)} · {contentTypeLabel}
+                                            </div>
+                                          </div>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => deleteGenerateHistoryItem(item.id)}
+                                            disabled={generateHistoryMutationLoading}
+                                            className="px-4 py-2 rounded-2xl border border-red-500/30 text-white bg-neutral-800 hover:bg-neutral-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                          >
+                                            Удалить
+                                          </button>
+                                        </div>
+
+                                        <div className="mt-3 text-neutral-300 text-sm">
+                                          Символов: {charCount} · Слов: {wordCount}
+                                        </div>
+
+                                        <div className="mt-3 text-neutral-200 text-sm leading-relaxed line-clamp-4">
+                                          {preview}
+                                        </div>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => openGenerateHistoryItem(item)}
+                                          className="mt-5 px-5 py-2 rounded-2xl bg-red-600 hover:bg-red-500 transition-colors inline-flex items-center gap-2"
+                                        >
+                                          Открыть
+                                          <ArrowRight className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                {generateHistoryHasMore && !generateHistoryUsingMock && (
+                                  <div className="flex justify-center pt-2">
+                                    <button
+                                      type="button"
+                                      onClick={loadMoreGenerateHistory}
+                                      disabled={generateHistoryLoadingMore}
+                                      className="px-8 py-3 rounded-2xl bg-neutral-800 hover:bg-neutral-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
+                                    >
+                                      {generateHistoryLoadingMore ? (
+                                        <>
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                          Загрузка...
+                                        </>
+                                      ) : (
+                                        "Загрузить ещё"
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <GenerateResultPanel
+                            generateResult={generateResult}
+                            generateLoading={generateLoading}
+                            generateError={generateError}
+                            contentTypeOptions={contentTypeOptions}
+                            editedText={editedText}
+                            setEditedText={setEditedText}
+                            onCopyText={handleCopyText}
+                            onPublish={handlePublish}
+                            publishLoading={publishLoading}
+                            publishError={publishError}
+                            publishSuccess={publishSuccess}
+                            imageDataUrl={imageDataUrl}
+                            editedImagePrompt={editedImagePrompt}
+                            setEditedImagePrompt={setEditedImagePrompt}
+                            onRegenerateImage={handleRegenerateImage}
+                            regenerateImageLoading={regenerateImageLoading}
+                            regenerateImageError={regenerateImageError}
+                            knowledgeMatches={knowledgeMatches}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>

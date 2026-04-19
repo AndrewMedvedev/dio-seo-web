@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   X,
   MessageCircle,
@@ -18,12 +18,18 @@ import { useChat } from "./hooks/useChat";
 import { useHistory } from "./hooks/useHistory";
 import { usePromotionActions } from "./hooks/usePromotionActions";
 import MarkdownMessage from "../components/Message";
+import { PromotionApi } from "../api/Promotion";
 
 export default function PromotionPage() {
   const state = usePromotionState();
   const history = useHistory();
   const chat = useChat(state.url, state.generationId);
   const actions = usePromotionActions(state.url, state.generationId);
+  const [interlinkingResult, setInterlinkingResult] = useState(null);
+  const [interlinkingLoading, setInterlinkingLoading] = useState(false);
+  const [interlinkingNotice, setInterlinkingNotice] = useState("");
+  const [interlinkingHistoryData, setInterlinkingHistoryData] = useState([]);
+  const [showInterlinkingHistory, setShowInterlinkingHistory] = useState(false);
 
   const getMainButtonText = () => {
     if (state.aiGenerating) {
@@ -42,6 +48,7 @@ export default function PromotionPage() {
   };
 
   const getInterlinkingResult = () => {
+    if (interlinkingResult) return interlinkingResult;
     if (!state.content) return null;
 
     return (
@@ -50,6 +57,44 @@ export default function PromotionPage() {
       state.content?.internal_linking_result ||
       null
     );
+  };
+
+  const runInterlinkingCheck = async () => {
+    if (!state.url.trim() || state.urlError || interlinkingLoading) return;
+
+    setShowInterlinkingHistory(false);
+    setInterlinkingLoading(true);
+    setInterlinkingNotice("");
+
+    try {
+      const data = await PromotionApi.interlinkingCheck(state.url.trim(), state.generationId);
+      setInterlinkingResult(data.result || null);
+      if (data.isMock) {
+        setInterlinkingNotice("Mock data is shown because backend response is unavailable.");
+      }
+
+      if (data.result) {
+        const historyItem = {
+          id: data.id || `local-${Date.now()}`,
+          created_at: data.created_at || new Date().toISOString(),
+          url: data.url || state.url.trim(),
+          result: data.result,
+        };
+        setInterlinkingHistoryData((prev) => [historyItem, ...prev.filter((x) => x.id !== historyItem.id)]);
+      }
+    } finally {
+      setInterlinkingLoading(false);
+    }
+  };
+
+  const loadInterlinkingHistory = async () => {
+    const data = await PromotionApi.interlinkingHistory(1, 10);
+    const items = data.results || [];
+    setInterlinkingHistoryData(items);
+    if (data.isMock) {
+      setInterlinkingNotice("History is shown from mock data because backend response is unavailable.");
+    }
+    return items;
   };
 
   const handleHistorySelect = (item) => {
@@ -65,6 +110,11 @@ export default function PromotionPage() {
   };
 
   const onAnalyze = () => {
+    if (state.showInterlinking) {
+      runInterlinkingCheck();
+      return;
+    }
+
     actions.handleAnalyze(
       state.setContent,
       state.setAiContent,
@@ -73,6 +123,22 @@ export default function PromotionPage() {
       state.setGenerationId,
     );
     state.setShowInterlinking(false);
+    setShowInterlinkingHistory(false);
+    setInterlinkingResult(null);
+    setInterlinkingNotice("");
+  };
+
+  const handleHistoryAction = async () => {
+    if (!state.showInterlinking) {
+      history.toggleHistory();
+      return;
+    }
+
+    setShowInterlinkingHistory(true);
+    const items = await loadInterlinkingHistory();
+    if (items.length === 0) {
+      setInterlinkingNotice("No interlinking history yet.");
+    }
   };
 
   const onGenerateAIContent = () => {
@@ -105,12 +171,20 @@ export default function PromotionPage() {
     if (state.showInterlinking) {
       state.setShowInterlinking(false);
       state.setShowAiContent(false);
+      setShowInterlinkingHistory(false);
       return;
     }
 
     state.setShowInterlinking(true);
     state.setShowAiContent(false);
+    setShowInterlinkingHistory(false);
   };
+
+  useEffect(() => {
+    if (!state.showInterlinking || history.showHistory) return;
+    if (interlinkingHistoryData.length > 0) return;
+    loadInterlinkingHistory();
+  }, [state.showInterlinking, history.showHistory, interlinkingHistoryData.length]);
 
   const showRightPanel = !!state.content || state.chatOpen;
   const isInterlinkingView = state.showInterlinking && !history.showHistory;
@@ -144,7 +218,7 @@ export default function PromotionPage() {
 
                   <button
                     onClick={onAnalyze}
-                    disabled={!state.url.trim() || state.loading}
+                    disabled={!state.url.trim() || (state.showInterlinking ? interlinkingLoading : state.loading)}
                     className="bg-red-600 hover:bg-red-500 disabled:bg-neutral-700 disabled:cursor-not-allowed px-8 py-4 rounded-2xl font-medium transition-colors whitespace-normal wrap-break-word flex-[1_1_280px] lg:flex-[0_0_auto]"
                   >
                     {state.loading
@@ -153,7 +227,7 @@ export default function PromotionPage() {
                   </button>
 
                   <button
-                    onClick={history.toggleHistory}
+                    onClick={handleHistoryAction}
                     className="px-6 py-4 rounded-2xl font-medium border border-neutral-700 hover:border-red-500/50 hover:text-white text-neutral-200 transition-colors whitespace-nowrap flex items-center justify-center gap-2 flex-[0_0_auto]"
                   >
                     <History className="w-4 h-4" />
@@ -302,10 +376,43 @@ export default function PromotionPage() {
                 <AioContentView aiContent={state.aiContent} />
               ) : isInterlinkingView ? (
                 <div className="h-full flex flex-col">
-                  {!getInterlinkingResult() ? (
-                    <div className="h-full flex items-center justify-center text-neutral-500 text-center py-20">
-                      После получения данных перелинковки результат появится в этом блоке
-                    </div>
+                  {showInterlinkingHistory ? (
+                    interlinkingHistoryData.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-neutral-500 text-center py-20">
+                        История перелинковки пока пуста
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <h2 className="text-2xl lg:text-3xl font-bold">История перелинковки</h2>
+                        <div className="grid gap-4">
+                          {interlinkingHistoryData.map((item, index) => {
+                            const date = new Date(item.created_at);
+                            return (
+                              <button
+                                type="button"
+                                key={item.id || index}
+                                onClick={() => {
+                                  setInterlinkingResult(item.result || null);
+                                  setShowInterlinkingHistory(false);
+                                }}
+                                className="text-left w-full rounded-2xl border border-neutral-800 hover:border-red-500/50 bg-dark-800/60 p-5 transition-colors"
+                              >
+                                <div className="flex items-center gap-2 text-xs text-neutral-400 mb-2">
+                                  <Calendar className="w-3.5 h-3.5" />
+                                  {format(date, "dd MMMM yyyy", { locale: ru })}
+                                  <Clock className="w-3.5 h-3.5 ml-2" />
+                                  {format(date, "HH:mm")}
+                                </div>
+                                <p className="text-sm text-neutral-500 mb-2 truncate font-mono">{item.url}</p>
+                                <p className="text-sm text-neutral-300 line-clamp-3">
+                                  {item.result?.summary || "Результат без краткого описания"}
+                                </p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )
                   ) : (
                     <div className="h-full">
                       <div className="mb-6">
@@ -317,11 +424,39 @@ export default function PromotionPage() {
                         </p>
                       </div>
 
-                      <div className="rounded-3xl border border-neutral-800 bg-dark-800/50 p-6 lg:p-8 h-full">
-                        <pre className="text-sm text-neutral-200 whitespace-pre-wrap wrap-break-word">
-                          {JSON.stringify(getInterlinkingResult(), null, 2)}
-                        </pre>
-                      </div>
+                      {!getInterlinkingResult() ? (
+                        <div className="h-full flex items-center justify-center text-neutral-500 text-center py-20">
+                          После получения данных перелинковки результат появится в этом блоке
+                        </div>
+                      ) : (
+                        <div className="rounded-3xl border border-neutral-800 bg-dark-800/50 p-6 lg:p-8 h-full">
+                          <h3 className="text-2xl font-bold mb-4">Результат</h3>
+                          {interlinkingNotice && (
+                            <div className="mb-4 text-xs text-amber-300">{interlinkingNotice}</div>
+                          )}
+                          <p className="text-neutral-300 leading-8 whitespace-pre-wrap wrap-break-word">
+                            {getInterlinkingResult()?.summary ||
+                              "Результат получен, но текстовое описание отсутствует."}
+                          </p>
+
+                          {Array.isArray(getInterlinkingResult()?.candidates) &&
+                            getInterlinkingResult().candidates.length > 0 && (
+                              <div className="mt-6 space-y-2">
+                                {getInterlinkingResult().candidates.map((item, idx) => (
+                                  <p
+                                    key={item.id || `${item.url}-${idx}`}
+                                    className="text-neutral-300 whitespace-pre-wrap wrap-break-word"
+                                  >
+                                    {idx + 1}) {item.url}
+                                    {item.depth != null ? ` (глубина: ${item.depth}` : ""}
+                                    {item.reason ? `; ${item.reason}` : ""}
+                                    {item.depth != null ? ")" : ""}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

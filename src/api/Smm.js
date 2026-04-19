@@ -143,6 +143,43 @@ function normalizeHistoryResponse(data) {
   };
 }
 
+function normalizeGenerateHistoryItem(item) {
+  const normalized = asObject(item);
+  const rawResult = asObject(normalized.result);
+  const fallbackResult = rawResult && Object.keys(rawResult).length ? rawResult : normalized;
+  const result = normalizeGenerate(fallbackResult);
+
+  return {
+    ...normalized,
+    id:
+      normalized.id ??
+      normalized.history_id ??
+      normalized.uuid ??
+      `${normalized.created_at || Date.now()}`,
+    created_at: asString(normalized.created_at || normalized.createdAt),
+    prompt: asString(normalized.prompt || normalized.input_prompt || normalized.request_prompt),
+    content_type: asString(normalized.content_type || result.content_type || "text"),
+    result,
+  };
+}
+
+function normalizeGenerateHistoryResponse(data) {
+  const normalized = asObject(data);
+  const list = Array.isArray(normalized.results)
+    ? normalized.results
+    : Array.isArray(data)
+      ? data
+      : asArray(normalized.items);
+  const results = list.map(normalizeGenerateHistoryItem);
+
+  return {
+    results,
+    count: Number(normalized.count || results.length),
+    next: normalized.next || null,
+    previous: normalized.previous || null,
+  };
+}
+
 export function buildGeneratePostPayload(payload) {
   const normalized = asObject(payload);
 
@@ -261,6 +298,33 @@ export const SmmApi = {
       return asObject(response.data);
     } catch (error) {
       throw toError(error, "Не удалось очистить историю.");
+    }
+  },
+
+  generateHistory: async (page = 1, limit = 10) => {
+    try {
+      const response = await apiClient.get(`/vk/posts/history?page=${page}&limit=${limit}`);
+      return normalizeGenerateHistoryResponse(response.data);
+    } catch (error) {
+      throw toError(error, "Не удалось загрузить историю генераций.");
+    }
+  },
+
+  deleteGenerateHistoryItem: async (id) => {
+    try {
+      const response = await apiClient.delete(`/vk/posts/history/${id}`);
+      return asObject(response.data);
+    } catch (error) {
+      throw toError(error, "Не удалось удалить запись истории генераций.");
+    }
+  },
+
+  clearGenerateHistory: async () => {
+    try {
+      const response = await apiClient.delete("/vk/posts/history");
+      return asObject(response.data);
+    } catch (error) {
+      throw toError(error, "Не удалось очистить историю генераций.");
     }
   },
 };
