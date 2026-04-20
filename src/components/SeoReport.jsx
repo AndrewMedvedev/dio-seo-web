@@ -30,7 +30,6 @@ export default function SeoReport({ content }) {
   const contentGen = data.content_generation_result || {};
   const analyzeMd = seoResult.analyze_md || {};
   const performance = seoResult.performance || {};
-
   const seoScore = seoResult.seo?.score || 0;
   const performanceScore = performance.score || 0;
 
@@ -96,6 +95,27 @@ export default function SeoReport({ content }) {
     return numA - numB;
   });
 
+  // === ДОПОЛНИТЕЛЬНЫЕ ПОЛЯ ДЛЯ ОТРИСОВКИ ===
+
+  // 1. Metadata (title, description, issues)
+  const metadata = analyzeMd.metadata || {};
+
+  // 2. Readability issues
+  const readabilityIssues = analyzeMd.readability?.issues || [];
+
+  // 3. Strong structures — дополнительные поля (strong_constructions и т.д.)
+  const strongStructures = analyzeMd.strong_structures || {};
+
+  // 4. Performance summary
+  const performanceSummary = performance.summary || "";
+
+  // 5. SEO summary
+  const seoSummary = seoResult.seo?.summary || "";
+
+  // 6. Overall score из analyze_md (если есть)
+  const overallScoreFromMd =
+    analyzeMd.overall_score || seoResult.overall_score || null;
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 space-y-20">
       {/* Общие оценки */}
@@ -123,6 +143,21 @@ export default function SeoReport({ content }) {
         </div>
       </div>
 
+      {/* SEO Summary (добавлено) */}
+      {seoSummary && (
+        <div>
+          <h3 className="text-xl font-semibold mb-6 flex items-center gap-4">
+            <BarChart3 className="w-7 h-7 text-violet-400" />
+            SEO Summary
+          </h3>
+          <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 md:p-10">
+            <p className="text-base leading-relaxed text-neutral-300 wrap-break-word">
+              {seoSummary}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Анализ контента */}
       <div>
         <h3 className="text-xl font-semibold mb-6 flex items-center gap-4">
@@ -140,11 +175,17 @@ export default function SeoReport({ content }) {
           <Zap className="w-7 h-7 text-orange-400" />
           Core Web Vitals
         </h3>
-
         <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 md:p-10 mb-8 text-base leading-relaxed text-neutral-300 wrap-break-words">
           {seoResult.core_web_vitals_analysis ||
             "Данные Core Web Vitals отсутствуют"}
         </div>
+
+        {/* Performance Summary (добавлено) */}
+        {performanceSummary && (
+          <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 md:p-10 mb-8 text-base leading-relaxed text-neutral-300">
+            {performanceSummary}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 text-center">
@@ -157,7 +198,6 @@ export default function SeoReport({ content }) {
               {performance.lcp ? `${performance.lcp}мс` : "—"}
             </div>
           </div>
-
           <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 text-center">
             <div className="text-neutral-400 text-xs uppercase tracking-widest mb-3">
               CLS
@@ -168,7 +208,6 @@ export default function SeoReport({ content }) {
               {performance.cls ?? "—"}
             </div>
           </div>
-
           <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 text-center">
             <div className="text-neutral-400 text-xs uppercase tracking-widest mb-3">
               FID / INP
@@ -188,9 +227,8 @@ export default function SeoReport({ content }) {
           <BookOpen className="w-7 h-7 text-sky-400" />
           Детальный анализ контента
         </h3>
-
         <div className="space-y-16">
-          {/* Заголовки */}
+          {/* Заголовки — существующий код без изменений */}
           <div>
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
@@ -214,7 +252,6 @@ export default function SeoReport({ content }) {
                 />
               </button>
             </div>
-
             {headersOpen && (
               <div className="bg-dark-800 border border-neutral-800 rounded-3xl overflow-hidden">
                 {headersData.length > 0 ? (
@@ -234,7 +271,6 @@ export default function SeoReport({ content }) {
                               {group.length} заголовков
                             </div>
                           </div>
-
                           <div className="divide-y divide-neutral-800">
                             {group.map((header, index) => (
                               <div
@@ -285,7 +321,55 @@ export default function SeoReport({ content }) {
             )}
           </div>
 
-          {/* Ключевые слова и плотность — исправленный блок */}
+          {/* Metadata (добавлено новое поле) */}
+          {Object.keys(metadata).length > 0 && (
+            <div>
+              <div className="flex items-center gap-4 mb-8">
+                <FileText className="w-7 h-7 text-neutral-400" />
+                <div>
+                  <div className="font-semibold text-xl">Мета-теги</div>
+                  <div className="text-neutral-500 text-sm">
+                    Title, Description и проблемы
+                  </div>
+                </div>
+              </div>
+              <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 md:p-10 space-y-6">
+                <div>
+                  <div className="text-neutral-500 text-xs mb-1">TITLE</div>
+                  <div className="text-neutral-100 text-base wrap-break-word">
+                    {metadata.title || "—"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-neutral-500 text-xs mb-1">
+                    DESCRIPTION
+                  </div>
+                  <div className="text-neutral-100 text-base wrap-break-word">
+                    {metadata.description || "—"}
+                  </div>
+                </div>
+                {metadata.issues && metadata.issues.length > 0 && (
+                  <div>
+                    <div className="text-red-400 text-xs mb-3">
+                      ПРОБЛЕМЫ МЕТА-ТЕГОВ
+                    </div>
+                    <div className="space-y-2">
+                      {metadata.issues.map((issue, i) => (
+                        <div
+                          key={i}
+                          className="text-red-400 text-sm flex gap-2"
+                        >
+                          <span>⚠</span> {issue}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Ключевые слова и плотность — существующий код без изменений */}
           <div>
             <div className="flex items-center gap-4 mb-8">
               <Tag className="w-7 h-7 text-amber-400" />
@@ -298,7 +382,6 @@ export default function SeoReport({ content }) {
                 </div>
               </div>
             </div>
-
             <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 md:p-10 overflow-x-auto">
               {analyzeMd.keywords?.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
@@ -312,7 +395,6 @@ export default function SeoReport({ content }) {
                         <div className="font-medium text-base text-neutral-100 wrap-break-words hyphens-auto min-w-0">
                           {kw.keyword}
                         </div>
-
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-x-10 gap-y-2 text-xs flex-wrap">
                           <div>
                             <span className="text-neutral-500">Частота: </span>
@@ -344,7 +426,7 @@ export default function SeoReport({ content }) {
             </div>
           </div>
 
-          {/* Ссылки */}
+          {/* Ссылки — существующий код без изменений */}
           <div>
             <div className="flex items-center gap-4 mb-8">
               <LinkIcon className="w-7 h-7 text-rose-400" />
@@ -396,7 +478,7 @@ export default function SeoReport({ content }) {
             </div>
           </div>
 
-          {/* Изображения */}
+          {/* Изображения — существующий код без изменений */}
           <div>
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
@@ -422,7 +504,6 @@ export default function SeoReport({ content }) {
                 />
               </button>
             </div>
-
             {imagesOpen && (
               <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 md:p-10">
                 {analyzeMd.images?.length > 0 ? (
@@ -464,7 +545,7 @@ export default function SeoReport({ content }) {
             )}
           </div>
 
-          {/* Читабельность */}
+          {/* Читабельность — существующий код + добавлены issues */}
           <div>
             <div className="flex items-center gap-4 mb-8">
               <BookOpen className="w-7 h-7 text-lime-400" />
@@ -498,9 +579,26 @@ export default function SeoReport({ content }) {
                 </div>
               </div>
             </div>
+
+            {/* Issues читабельности (добавлено) */}
+            {readabilityIssues.length > 0 && (
+              <div className="mt-6 bg-dark-800 border border-neutral-800 rounded-3xl p-8">
+                <div className="text-red-400 text-sm mb-4">
+                  Проблемы читабельности:
+                </div>
+                <ul className="space-y-2 text-neutral-300">
+                  {readabilityIssues.map((issue, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span className="text-red-400 mt-0.5">•</span>
+                      {issue}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
-          {/* Сильные структуры и стиль */}
+          {/* Сильные структуры и стиль — существующий код без изменений */}
           {analyzeMd.strong_structures && (
             <div>
               <div className="flex items-center gap-4 mb-8">
@@ -520,26 +618,24 @@ export default function SeoReport({ content }) {
                     Стиль текста
                   </div>
                   <div className="text-lg text-neutral-200 leading-relaxed wrap-break-words">
-                    {analyzeMd.strong_structures.writing_style}
+                    {strongStructures.writing_style}
                   </div>
                 </div>
-
                 <div>
                   <div className="uppercase text-xs tracking-widest text-neutral-500 mb-4">
                     Влияние на читателя
                   </div>
                   <div className="text-neutral-300 leading-relaxed text-base wrap-break-words">
-                    {analyzeMd.strong_structures.influence_on_reader}
+                    {strongStructures.influence_on_reader}
                   </div>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   <div>
                     <div className="uppercase text-xs tracking-widest text-neutral-500 mb-4">
                       Влияние на SEO
                     </div>
                     <div className="text-neutral-300 leading-relaxed text-base wrap-break-words">
-                      {analyzeMd.strong_structures.influence_on_seo}
+                      {strongStructures.influence_on_seo}
                     </div>
                   </div>
                   <div>
@@ -547,18 +643,18 @@ export default function SeoReport({ content }) {
                       Влияние на конверсию
                     </div>
                     <div className="text-neutral-300 leading-relaxed text-base wrap-break-words">
-                      {analyzeMd.strong_structures.influence_on_conversion}
+                      {strongStructures.influence_on_conversion}
                     </div>
                   </div>
                 </div>
 
-                {analyzeMd.strong_structures.examples?.length > 0 && (
+                {strongStructures.strong_constructions?.length > 0 && (
                   <div>
                     <div className="uppercase text-xs tracking-widest text-neutral-500 mb-6">
-                      Примеры сильных конструкций
+                      Сильные конструкции
                     </div>
-                    <div className="space-y-5">
-                      {analyzeMd.strong_structures.examples.map((ex, i) => (
+                    <div className="space-y-4">
+                      {strongStructures.strong_constructions.map((ex, i) => (
                         <div
                           key={i}
                           className="bg-neutral-900 border-l-4 border-purple-500 pl-7 py-6 text-neutral-200 italic text-base leading-relaxed wrap-break-words"
@@ -570,22 +666,38 @@ export default function SeoReport({ content }) {
                   </div>
                 )}
 
-                {analyzeMd.strong_structures.recommendations?.length > 0 && (
+                {strongStructures.examples?.length > 0 && (
+                  <div>
+                    <div className="uppercase text-xs tracking-widest text-neutral-500 mb-6">
+                      Примеры сильных конструкций
+                    </div>
+                    <div className="space-y-5">
+                      {strongStructures.examples.map((ex, i) => (
+                        <div
+                          key={i}
+                          className="bg-neutral-900 border-l-4 border-purple-500 pl-7 py-6 text-neutral-200 italic text-base leading-relaxed wrap-break-words"
+                        >
+                          {ex}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {strongStructures.recommendations?.length > 0 && (
                   <div>
                     <div className="uppercase text-xs tracking-widest text-neutral-500 mb-6">
                       Рекомендации по стилю
                     </div>
                     <div className="space-y-4 text-neutral-300 text-base">
-                      {analyzeMd.strong_structures.recommendations.map(
-                        (rec, i) => (
-                          <div key={i} className="flex gap-4">
-                            <span className="text-emerald-400 mt-1 text-base">
-                              •
-                            </span>
-                            <span className="wrap-break-words">{rec}</span>
-                          </div>
-                        ),
-                      )}
+                      {strongStructures.recommendations.map((rec, i) => (
+                        <div key={i} className="flex gap-4">
+                          <span className="text-emerald-400 mt-1 text-base">
+                            •
+                          </span>
+                          <span className="wrap-break-words">{rec}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -595,7 +707,7 @@ export default function SeoReport({ content }) {
         </div>
       </div>
 
-      {/* Специализация компании */}
+      {/* Специализация компании — существующий код без изменений */}
       <div>
         <h3 className="text-xl font-semibold mb-6 flex items-center gap-4">
           <Target className="w-7 h-7 text-blue-400" />
@@ -606,7 +718,7 @@ export default function SeoReport({ content }) {
         </div>
       </div>
 
-      {/* Основная область экспертизы */}
+      {/* Основная область экспертизы — существующий код без изменений */}
       <div>
         <h3 className="text-xl font-semibold mb-6 flex items-center gap-4">
           <Award className="w-7 h-7 text-emerald-400" />
@@ -617,7 +729,7 @@ export default function SeoReport({ content }) {
         </div>
       </div>
 
-      {/* Ключевые проблемы клиентов */}
+      {/* Ключевые проблемы клиентов — существующий код без изменений */}
       <div>
         <h3 className="text-xl font-semibold mb-6 flex items-center gap-4">
           <Users className="w-7 h-7 text-rose-400" />
@@ -628,7 +740,7 @@ export default function SeoReport({ content }) {
         </div>
       </div>
 
-      {/* Преимущества для клиента */}
+      {/* Преимущества для клиента — существующий код без изменений */}
       <div>
         <h3 className="text-xl font-semibold mb-6 flex items-center gap-4">
           <Lightbulb className="w-7 h-7 text-yellow-400" />
@@ -639,10 +751,10 @@ export default function SeoReport({ content }) {
         </div>
       </div>
 
-      {/* Семантическое ядро */}
+      {/* Семантическое ядро — существующий код без изменений */}
       <div>
         <h3 className="text-xl font-semibold mb-8 flex items-center gap-4">
-          <Database className="w-7 h-7 text-indigo-400" /> {/* ← вот здесь */}
+          <Database className="w-7 h-7 text-indigo-400" />
           Семантическое ядро
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -663,7 +775,6 @@ export default function SeoReport({ content }) {
               ) || <span className="text-neutral-500 text-sm">—</span>}
             </div>
           </div>
-
           <div className="space-y-4">
             <div className="text-yellow-400 font-semibold text-base">
               Средняя частота
@@ -681,7 +792,6 @@ export default function SeoReport({ content }) {
               ) || <span className="text-neutral-500 text-sm">—</span>}
             </div>
           </div>
-
           <div className="space-y-4">
             <div className="text-orange-400 font-semibold text-base">
               Низкая частота
@@ -702,7 +812,7 @@ export default function SeoReport({ content }) {
         </div>
       </div>
 
-      {/* Найденные проблемы */}
+      {/* Найденные проблемы — существующий код без изменений */}
       <div>
         <h3 className="text-xl font-semibold mb-8 flex items-center gap-4">
           <AlertTriangle className="w-7 h-7 text-red-400" />
@@ -744,7 +854,7 @@ export default function SeoReport({ content }) {
         </div>
       </div>
 
-      {/* Рекомендации */}
+      {/* Рекомендации — существующий код без изменений */}
       <div>
         <h3 className="text-xl font-semibold mb-8 flex items-center gap-4">
           <CheckCircle className="w-7 h-7 text-emerald-400" />
@@ -773,13 +883,12 @@ export default function SeoReport({ content }) {
         </div>
       </div>
 
-      {/* Сгенерированный SEO-контент */}
+      {/* Сгенерированный SEO-контент — существующий код без изменений */}
       <div className="bg-dark-900 border border-neutral-800 rounded-3xl p-8 md:p-12">
         <h3 className="text-xl font-semibold mb-10 flex items-center gap-4">
           <Sparkles className="w-7 h-7 text-purple-400" />
           Сгенерированный SEO-контент
         </h3>
-
         <div className="space-y-12">
           <div>
             <div className="uppercase text-xs tracking-widest text-neutral-500 mb-4">
@@ -789,7 +898,6 @@ export default function SeoReport({ content }) {
               {contentGen.h1 || "—"}
             </p>
           </div>
-
           <div>
             <div className="uppercase text-xs tracking-widest text-neutral-500 mb-4">
               Title
@@ -798,7 +906,6 @@ export default function SeoReport({ content }) {
               {contentGen.title || "—"}
             </p>
           </div>
-
           <div>
             <div className="uppercase text-xs tracking-widest text-neutral-500 mb-4">
               Description
@@ -807,7 +914,6 @@ export default function SeoReport({ content }) {
               {contentGen.description || "—"}
             </p>
           </div>
-
           <div>
             <div className="uppercase text-xs tracking-widest text-neutral-500 mb-6">
               Alt-тексты изображений
@@ -845,7 +951,7 @@ export default function SeoReport({ content }) {
         </div>
       </div>
 
-      {/* Стоимость анализа */}
+      {/* Стоимость анализа — существующий код без изменений */}
       <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-10 flex flex-col md:flex-row justify-between items-center gap-8">
         <div>
           <div className="text-neutral-300 text-base mb-1">
