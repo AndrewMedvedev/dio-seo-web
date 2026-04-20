@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from "react";
+﻿import { useMemo, useState, useRef, useEffect } from "react";
 import {
   Bot,
   Image,
@@ -23,6 +23,29 @@ const isConnectionErrorMessage = (message = "") =>
   ["ERR_CONNECTION_REFUSED", "Network Error", "Failed to fetch", "fetch"].some(
     (token) => message.includes(token),
   );
+
+const ASSISTANT_WELCOME_TEXT =
+  "Я изучил результаты анализа. Задайте вопрос, и я помогу с улучшением группы.";
+
+const createAssistantWelcomeMessage = () => ({
+  id: `assistant-welcome-${Date.now()}`,
+  type: "ai",
+  text: ASSISTANT_WELCOME_TEXT,
+});
+
+const mapRecommendationsChatMessages = (messages) =>
+  (Array.isArray(messages) ? messages : [])
+    .map((item, index) => {
+      const role = String(item?.role || "assistant").toLowerCase() === "user" ? "user" : "assistant";
+      const text = String(item?.text || "").trim();
+      if (!text) return null;
+      return {
+        id: String(item?.id || item?.created_at || `${Date.now()}-${index}`),
+        type: role === "user" ? "user" : "ai",
+        text,
+      };
+    })
+    .filter(Boolean);
 
 const formatHistoryDateTime = (value) => {
   if (!value) return "-";
@@ -55,6 +78,8 @@ const initialGenerateForm = {
   publish: false,
   length: "medium",
   language: "ru",
+  ai_provider: "auto",
+  use_kb_image_references: true,
 };
 
 const languageOptions = [
@@ -411,13 +436,7 @@ export default function SmmPage() {
   const [publishSuccess, setPublishSuccess] = useState("");
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [isGenerateFiltersOpen, setIsGenerateFiltersOpen] = useState(true);
-  const [assistantMessages, setAssistantMessages] = useState([
-    {
-      id: "assistant-welcome",
-      type: "ai",
-      text: "Я изучил результаты анализа. Задайте вопрос, и я помогу с улучшением группы.",
-    },
-  ]);
+  const [assistantMessages, setAssistantMessages] = useState([createAssistantWelcomeMessage()]);
   const [isKnowledgeExpanded, setIsKnowledgeExpanded] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -437,6 +456,15 @@ export default function SmmPage() {
   });
 
   const [improvementQuestion, setImprovementQuestion] = useState("");
+  const [isAssistantSending, setIsAssistantSending] = useState(false);
+  const [assistantHistoryId, setAssistantHistoryId] = useState(null);
+  const [isAnalyzeResultFromBackend, setIsAnalyzeResultFromBackend] = useState(false);
+  const [isGenerateResultFromBackend, setIsGenerateResultFromBackend] = useState(false);
+
+  const resetAssistantChat = () => {
+    setAssistantMessages([createAssistantWelcomeMessage()]);
+    setImprovementQuestion("");
+  };
 
   const mockAnalyzeResult = {
     group_name: "Красное и Белое",
@@ -651,11 +679,38 @@ export default function SmmPage() {
     fetchAnalyzeHistory(currentPage + 1, true);
   };
 
-  const openAnalyzeHistoryItem = (item) => {
-    if (!item?.result) return;
-    setAnalyzeResult(item.result);
-    setAnalyzeError("");
-    setShowAnalyzeHistory(false);
+  const openAnalyzeHistoryItem = async (item) => {
+    if (!item?.id) return;
+
+    setHistoryError("");
+    setHistoryLoading(true);
+
+    try {
+      const detail = await SmmApi.historyItem(item.id);
+      const report = detail?.report || item?.result;
+      if (!report) return;
+
+      setAnalyzeResult(report);
+      setIsAnalyzeResultFromBackend(true);
+      setAssistantHistoryId(detail?.id ?? report?.history_id ?? item?.id ?? null);
+      resetAssistantChat();
+      setAnalyzeError("");
+      setShowAnalyzeHistory(false);
+    } catch (error) {
+      if (isConnectionErrorMessage(error?.message || "")) {
+        if (!item?.result) return;
+        setAnalyzeResult(item.result);
+        setIsAnalyzeResultFromBackend(false);
+        setAssistantHistoryId(item?.id ?? item?.result?.history_id ?? null);
+        resetAssistantChat();
+        setAnalyzeError("");
+        setShowAnalyzeHistory(false);
+      } else {
+        setHistoryError(error?.message || "Failed to open history item.");
+      }
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   const deleteAnalyzeHistoryItem = async (id) => {
@@ -769,13 +824,61 @@ export default function SmmPage() {
     fetchGenerateHistory(generateHistoryPage + 1, true);
   };
 
-  const openGenerateHistoryItem = (item) => {
-    if (!item?.result) return;
-    setGenerateResult(item.result);
-    setEditedText(item.result.text || "");
-    setEditedImagePrompt(item.result.image_prompt || "");
+  const applyGenerateHistorySelection = (historyItem, report, fromBackend) => {
+    if (!report) return;
+
+    setGenerateResult(report);
+    setEditedText(report.text || "");
+    setEditedImagePrompt(report.image_prompt || "");
+    setGenerateForm((prev) => ({
+      ...prev,
+      prompt: String(historyItem?.prompt || prev.prompt || ""),
+      theme: String(historyItem?.theme || report?.theme || ""),
+      tone: String(historyItem?.tone || report?.tone || ""),
+      content_type: String(historyItem?.content_type || report?.content_type || prev.content_type || "text"),
+      publish: Boolean(
+        historyItem?.publish_requested ??
+          report?.publish_requested ??
+          prev.publish ??
+          false,
+      ),
+      length: String(historyItem?.length || prev.length || "medium"),
+      language: String(historyItem?.language || prev.language || "ru"),
+      ai_provider: String(
+        historyItem?.ai_provider || report?.ai_provider || prev.ai_provider || "auto",
+      ),
+      use_kb_image_references: Boolean(
+        historyItem?.use_kb_image_references ??
+          report?.use_kb_image_references ??
+          prev.use_kb_image_references ??
+          true,
+      ),
+    }));
+    setIsGenerateResultFromBackend(Boolean(fromBackend));
     setGenerateError("");
     setShowGenerateHistory(false);
+  };
+
+  const openGenerateHistoryItem = async (item) => {
+    if (!item?.id) return;
+
+    setGenerateHistoryError("");
+    setGenerateHistoryLoading(true);
+
+    try {
+      const detail = await SmmApi.generateHistoryItem(item.id);
+      applyGenerateHistorySelection(detail, detail?.report, true);
+    } catch (error) {
+      if (isConnectionErrorMessage(error?.message || "")) {
+        applyGenerateHistorySelection(item, item?.result, false);
+      } else {
+        setGenerateHistoryError(
+          error?.message || "Не удалось открыть запись истории генераций.",
+        );
+      }
+    } finally {
+      setGenerateHistoryLoading(false);
+    }
   };
 
   const deleteGenerateHistoryItem = async (id) => {
@@ -828,6 +931,8 @@ export default function SmmPage() {
     event.preventDefault();
     setShowAnalyzeHistory(false);
     setAnalyzeError("");
+    resetAssistantChat();
+    setAssistantHistoryId(null);
 
     const dateFrom = String(analyzeForm.date_from || "").trim();
     const dateTo = String(analyzeForm.date_to || "").trim();
@@ -849,7 +954,12 @@ export default function SmmPage() {
 
       const data = await SmmApi.analyzeGroup(payload);
 
-      setAnalyzeResult(data);
+      setAnalyzeResult({
+        ...data,
+        post_limit: payload.post_limit,
+      });
+      setIsAnalyzeResultFromBackend(true);
+      setAssistantHistoryId(data?.history_id ?? null);
     } catch (error) {
       const message = error?.message || "";
 
@@ -858,6 +968,7 @@ export default function SmmPage() {
           ...mockAnalyzeResult,
           group_name: analyzeForm.source.trim() || mockAnalyzeResult.group_name,
         });
+        setIsAnalyzeResultFromBackend(false);
 
         setAnalyzeError(
           "Бэкенд недоступен, поэтому показан демонстрационный результат. Как только API снова станет доступен, будет использоваться реальный ответ сервера."
@@ -865,6 +976,7 @@ export default function SmmPage() {
       } else {
         setAnalyzeError(error.message);
         setAnalyzeResult(null);
+        setIsAnalyzeResultFromBackend(false);
       }
     } finally {
       setAnalyzeLoading(false);
@@ -889,10 +1001,15 @@ export default function SmmPage() {
         publish: Boolean(generateForm.publish),
         length: String(generateForm.length || "medium"),
         language: String(generateForm.language || "ru"),
+        ai_provider: String(generateForm.ai_provider || "auto"),
+        use_kb_image_references: Boolean(
+          generateForm.use_kb_image_references ?? true,
+        ),
       };
       const data = await SmmApi.generatePost(payload);
 
       setGenerateResult(data);
+      setIsGenerateResultFromBackend(true);
       setEditedText(data.text || "");
       setEditedImagePrompt(data.image_prompt || "");
     } catch (error) {
@@ -908,6 +1025,7 @@ export default function SmmPage() {
         };
 
         setGenerateResult(fallbackResult);
+        setIsGenerateResultFromBackend(false);
         setEditedText(fallbackResult.text || "");
         setEditedImagePrompt(fallbackResult.image_prompt || "");
         setGenerateError(
@@ -916,6 +1034,7 @@ export default function SmmPage() {
       } else {
         setGenerateError(error.message);
         setGenerateResult(null);
+        setIsGenerateResultFromBackend(false);
       }
     } finally {
       setGenerateLoading(false);
@@ -940,6 +1059,10 @@ export default function SmmPage() {
         theme: generateResult?.theme || generateForm.theme || null,
         tone: generateResult?.tone || generateForm.tone || null,
         language: generateForm.language || "ru",
+        ai_provider: generateForm.ai_provider || "auto",
+        use_kb_image_references: Boolean(
+          generateForm.use_kb_image_references ?? true,
+        ),
       });
 
       setEditedImagePrompt(data.image_prompt || "");
@@ -1118,41 +1241,93 @@ export default function SmmPage() {
     }
   };
 
-  const handleImprovementQuestion = () => {
+  const handleImprovementQuestion = async () => {
     const text = improvementQuestion.trim();
-    if (!text) return;
+    if (!text || isAssistantSending || !analyzeResult) return;
 
-    const aiText =
-      "Рекомендую начать с контента, который легче вовлекает аудиторию: опросы, короткие полезные посты, регулярные рубрики и более явные призывы к действию. После этого можно сравнить, какие темы дают больше лайков и комментариев, и масштабировать их.";
-
-    setAssistantMessages((prev) => [
-      ...prev,
-      { id: `${Date.now()}-u-plan`, type: "user", text },
-      {
-        id: `${Date.now()}-a-plan`,
-        type: "ai",
-        text: aiText,
-      },
-    ]);
-
+    const userMessage = { id: `${Date.now()}-u-plan`, type: "user", text };
+    setAssistantMessages((prev) => [...prev, userMessage]);
     setImprovementQuestion("");
+    setIsAssistantSending(true);
+
+    try {
+      const response = await SmmApi.recommendationsChat({
+        report: analyzeResult,
+        message: text,
+        language: analyzeForm.language || "ru",
+        history_id: assistantHistoryId ?? analyzeResult?.history_id ?? undefined,
+      });
+
+      const mappedMessages = mapRecommendationsChatMessages(response?.chat_messages);
+      if (mappedMessages.length > 0) {
+        setAssistantMessages(mappedMessages);
+      } else {
+        setAssistantMessages((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-a-plan`,
+            type: "ai",
+            text:
+              String(response?.answer || "").trim() ||
+              "Не удалось получить содержательный ответ от AI-помощника.",
+          },
+        ]);
+      }
+    } catch (error) {
+      setAssistantMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-a-error`,
+          type: "ai",
+          text:
+            error?.message ||
+            "Сервер временно недоступен. Попробуйте повторить запрос через несколько секунд.",
+        },
+      ]);
+    } finally {
+      setIsAssistantSending(false);
+    }
   };
 
   const analyzeTopPosts = analyzeResult?.metrics?.top_posts || [];
-  const analyzeCompetitors = analyzeResult?.ai?.competitors || [];
-  const analyzeRecommendations = analyzeResult?.ai?.recommendations || [];
+  const analyzeCompetitors = Array.isArray(analyzeResult?.competitors_found)
+    ? analyzeResult.competitors_found
+    : [];
+  const analyzeRecommendations = Array.isArray(analyzeResult?.recommendations)
+    ? analyzeResult.recommendations
+    : [];
+  const shouldUseMockCompetitors =
+    !isAnalyzeResultFromBackend && analyzeCompetitors.length === 0;
+  const competitorsToRender = shouldUseMockCompetitors
+    ? mockCompetitors
+    : analyzeCompetitors;
+  const requestedPosts = Number(analyzeResult?.post_limit || analyzeForm.post_limit || 0) || 0;
+  const analyzedPosts = Number(analyzeResult?.metrics?.total_posts_analyzed || 0) || 0;
   const hasHistoryItems = historyData.length > 0;
   const hasGenerateHistoryItems = generateHistoryData.length > 0;
   const groupTitle =
     analyzeResult?.group_name ||
+    analyzeResult?.source?.name ||
+    analyzeResult?.group?.name ||
     analyzeResult?.title ||
     analyzeForm.source ||
     "VK-группа";
 
-  const knowledgeMatches =
-    generateResult?.knowledge_matches?.length
-      ? generateResult.knowledge_matches
-      : mockGenerateKnowledgeMaterials;
+  const knowledgeMatches = (() => {
+    if (Array.isArray(generateResult?.knowledge_chunks) && generateResult.knowledge_chunks.length > 0) {
+      return generateResult.knowledge_chunks;
+    }
+    if (
+      !isGenerateResultFromBackend &&
+      Array.isArray(generateResult?.knowledge_matches) &&
+      generateResult.knowledge_matches.length > 0
+    ) {
+      return generateResult.knowledge_matches;
+    }
+    return !isGenerateResultFromBackend && generateResult
+      ? mockGenerateKnowledgeMaterials
+      : [];
+  })();
 
   return (
     <div className="min-h-screen bg-dark-900 text-white">
@@ -1473,7 +1648,7 @@ export default function SmmPage() {
                           </div>
 
                           <div className="px-5 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm font-medium">
-                            GigaChat analysis completed
+                            Анализ завершён
                           </div>
                         </div>
 
@@ -1494,6 +1669,10 @@ export default function SmmPage() {
                             label="Постов в день"
                             value={analyzeResult.metrics.posts_per_day}
                           />
+                        </div>
+
+                        <div className="text-sm text-neutral-400">
+                          {`Запрошено постов: ${formatNumber(requestedPosts)}; проанализировано: ${formatNumber(analyzedPosts)}`}
                         </div>
 
                         <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-6">
@@ -1621,15 +1800,17 @@ export default function SmmPage() {
                           </div>
 
                           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                            {(analyzeCompetitors.length
-                              ? analyzeCompetitors
-                              : mockCompetitors
-                            ).map((competitor, index) => (
+                            {competitorsToRender.map((competitor, index) => (
                               <CompetitorCard
                                 key={`${competitor.name}-${index}`}
                                 item={competitor}
                               />
                             ))}
+                            {competitorsToRender.length === 0 && (
+                              <div className="text-sm text-neutral-500">
+                                Конкуренты не найдены.
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -1682,15 +1863,17 @@ export default function SmmPage() {
                                 onChange={(e) => setImprovementQuestion(e.target.value)}
                                 rows={4}
                                 placeholder="Введите вопрос по улучшению"
-                                className="w-full bg-neutral-900 border border-neutral-700 focus:border-red-500 rounded-2xl px-6 py-4 text-white text-lg placeholder:text-neutral-500 resize-none"
+                                disabled={isAssistantSending || !analyzeResult}
+                                className="w-full bg-neutral-900 border border-neutral-700 focus:border-red-500 rounded-2xl px-6 py-4 text-white text-lg placeholder:text-neutral-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
                               />
                             </div>
                             <button
                               type="button"
                               onClick={handleImprovementQuestion}
-                              className="bg-red-600 hover:bg-red-500 px-10 py-4 rounded-2xl font-medium transition-colors whitespace-nowrap min-w-45"
+                              disabled={isAssistantSending || !improvementQuestion.trim() || !analyzeResult}
+                              className="bg-red-600 hover:bg-red-500 disabled:bg-red-900/40 disabled:text-neutral-300 px-10 py-4 rounded-2xl font-medium transition-colors whitespace-nowrap min-w-45"
                             >
-                              Отправить
+                              {isAssistantSending ? "Отправка..." : "Отправить"}
                             </button>
                           </div>
                         </div>

@@ -1,4 +1,6 @@
 import { Copy, Image } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import StatusAlert from "./StatusAlert";
 
 function ResultTypeBadge({ contentType, contentTypeOptions }) {
@@ -14,6 +16,8 @@ function ResultTypeBadge({ contentType, contentTypeOptions }) {
 }
 
 function KnowledgeMaterialCard({ item }) {
+  const body = String(item.content || item.snippet_preview || "").trim();
+
   return (
     <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-5 min-h-[240px]">
       <div className="text-[22px] leading-snug font-semibold text-white">
@@ -22,13 +26,35 @@ function KnowledgeMaterialCard({ item }) {
 
       <div className="mt-2 text-neutral-300 text-[15px]">Оценка: {item.score}</div>
 
-      <div className="mt-1 text-neutral-500 text-[15px]">
-        token overlap: {item.tokenOverlap}
-        {typeof item.exactHits === "number" ? `, exact term hits: ${item.exactHits}` : ""}
-      </div>
+      {(typeof item.tokenOverlap === "number" ||
+        typeof item.phraseHits === "number" ||
+        typeof item.exactHits === "number") && (
+        <div className="mt-1 text-neutral-500 text-[15px]">
+          {typeof item.tokenOverlap === "number" ? `token overlap: ${item.tokenOverlap}` : ""}
+          {typeof item.phraseHits === "number" ? `, phrase hits: ${item.phraseHits}` : ""}
+          {typeof item.exactHits === "number" ? `, exact term hits: ${item.exactHits}` : ""}
+        </div>
+      )}
 
-      <div className="mt-4 whitespace-pre-line text-neutral-200 text-base leading-6">
-        {item.content}
+      {item.reason && (
+        <div className="mt-2 text-neutral-400 text-sm leading-5">{item.reason}</div>
+      )}
+
+      <div className="mt-4 text-neutral-200 text-base leading-6">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            p: ({ children }) => <p className="mb-3 leading-6">{children}</p>,
+            h1: ({ children }) => <h4 className="mb-2 text-white text-lg font-semibold">{children}</h4>,
+            h2: ({ children }) => <h5 className="mb-2 text-white text-base font-semibold">{children}</h5>,
+            h3: ({ children }) => <h6 className="mb-2 text-white text-base font-medium">{children}</h6>,
+            ul: ({ children }) => <ul className="mb-3 list-disc pl-5 space-y-1">{children}</ul>,
+            ol: ({ children }) => <ol className="mb-3 list-decimal pl-5 space-y-1">{children}</ol>,
+            hr: () => <hr className="my-3 border-neutral-700" />,
+          }}
+        >
+          {body || "Фрагмент отсутствует."}
+        </ReactMarkdown>
       </div>
     </div>
   );

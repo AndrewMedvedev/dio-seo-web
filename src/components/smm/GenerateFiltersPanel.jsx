@@ -7,6 +7,15 @@ const publishOptions = [
   { value: "no", label: "Нет" },
   { value: "yes", label: "Да" },
 ];
+const providerOptions = [
+  { value: "auto", label: "Auto" },
+  { value: "gigachat", label: "GigaChat" },
+  { value: "yandex", label: "YandexGPT" },
+];
+const kbImageReferencesOptions = [
+  { value: "yes", label: "Да" },
+  { value: "no", label: "Нет" },
+];
 
 export default function GenerateFiltersPanel({
   isKnowledgeExpanded,
@@ -119,6 +128,32 @@ export default function GenerateFiltersPanel({
                 }))
               }
               options={publishOptions}
+            />
+          </FieldGroup>
+
+          <FieldGroup label="AI провайдер">
+            <CustomSelect
+              value={generateForm.ai_provider || "auto"}
+              onChange={(e) =>
+                setGenerateForm((prev) => ({
+                  ...prev,
+                  ai_provider: e.target.value,
+                }))
+              }
+              options={providerOptions}
+            />
+          </FieldGroup>
+
+          <FieldGroup label="Исп. KB refs для image">
+            <CustomSelect
+              value={generateForm.use_kb_image_references ? "yes" : "no"}
+              onChange={(e) =>
+                setGenerateForm((prev) => ({
+                  ...prev,
+                  use_kb_image_references: e.target.value === "yes",
+                }))
+              }
+              options={kbImageReferencesOptions}
             />
           </FieldGroup>
         </div>
