@@ -92,16 +92,18 @@ apiClient.interceptors.request.use(
 );
 
 // ==== Флаг для предотвращения множественных refresh запросов ====
+// ==== Глобальные переменные для refresh механизма ====
 let isRefreshing = false;
 let failedQueue = [];
 
+// Функция обработки очереди запросов, которые ждали refresh
 const processQueue = (error, token = null) => {
   failedQueue.forEach((promise) => {
     if (error) {
       promise.reject(error);
-    } else if (token && promise.config.headers) {
+    } else if (token && promise.config?.headers) {
       promise.config.headers.Authorization = `Bearer ${token}`;
-      promise.resolve(api(promise.config));
+      promise.resolve(apiClient(promise.config));
     } else {
       promise.reject(new Error("No token provided"));
     }
@@ -109,95 +111,128 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+// ==================== ИНТЕРЦЕПТОР ОТВЕТОВ ====================
 apiClient.interceptors.response.use(
-  (response) => response, // успешные ответы пропускаем без изменений
+  (response) => response, // успешные ответы не трогаем
 
   async (error) => {
     console.log(error.response.data);
+    const originalRequest = error.config;
     const statusCode = error.response?.status || 500;
-    let message = "Неизвестная ошибка сервера";
 
+    // Извлекаем сообщение об ошибке
+    let message = "Неизвестная ошибка сервера";
     if (error.response?.data?.error?.message) {
       message = error.response.data.error.message;
     }
 
-    // Специальная обработка 401
+    // ====================== ОБРАБОТКА 401 ======================
     if (statusCode === 401) {
+      // Если мы уже на странице логина — просто показываем ошибку
       if (window.location.pathname === "/login") {
-        window.showGlobalError({
+        window.showGlobalError?.({
           statusCode,
           message,
-          variant: statusCode >= 500 ? "error" : "warning",
+          variant: "warning",
         });
         return Promise.reject(error);
       }
-    }
 
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject, config: originalRequest });
-      });
-    }
-
-    originalRequest._retry = true;
-    isRefreshing = true;
-
-    const refreshToken = tokenStorage.getRefreshToken();
-
-    if (!refreshToken) {
-      tokenStorage.clearTokens();
-      window.location.href = "/login";
-      return Promise.reject(error);
-    }
-
-    try {
-      // Запрос на обновление токена
-      const response = await axios.post(`${API_URL}/api/v1/auth/refresh`, {
-        refresh_token: refreshToken,
-      });
-
-      const { access_token, refresh_token, expires_at } = response.data;
-
-      // Сохраняем новые токены
-      tokenStorage.setTokens(access_token, refresh_token, expires_at);
-
-      // Обновляем заголовок для текущего запроса
-      if (originalRequest.headers) {
-        originalRequest.headers.Authorization = `Bearer ${access_token}`;
-      }
-
-      if (window.showGlobalError) {
-        window.showGlobalError({
+      // Если запрос уже пытался обновить токен — не зацикливаемся
+      if (originalRequest._retry) {
+        tokenStorage.clearTokens();
+        window.location.href = "/login";
+        window.showGlobalError?.({
           statusCode,
-          message,
-          variant: statusCode >= 500 ? "error" : "warning",
+          message: "Сессия истекла. Пожалуйста, войдите заново.",
+          variant: "warning",
         });
-      } else {
-        console.warn(
-          "window.showGlobalError не зарегистрирован. Ошибка:",
-          statusCode,
-          message,
-        );
+        return Promise.reject(error);
       }
 
-      // Обрабатываем все запросы, которые ждали обновления
-      processQueue(null, access_token);
+      // Если сейчас уже идёт процесс обновления токена — добавляем запрос в очередь
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject, config: originalRequest });
+        });
+      }
 
-      // Повторяем оригинальный запрос
-      return api(originalRequest);
-    } catch (refreshError) {
-      console.error("Refresh token failed:", refreshError);
-      tokenStorage.clearTokens();
-      processQueue(refreshError, null);
-      window.location.href = "/login";
+      // Начинаем процесс обновления токена
+      isRefreshing = true;
+      originalRequest._retry = true;
+
+      const refreshToken = tokenStorage.getRefreshToken();
+
+      // Если refresh токена нет — сразу на логин
+      if (!refreshToken) {
+        tokenStorage.clearTokens();
+        window.location.href = "/login";
+        window.showGlobalError?.({
+          statusCode,
+          message: "Сессия истекла",
+          variant: "warning",
+        });
+        isRefreshing = false;
+        return Promise.reject(error);
+      }
+
+      try {
+        // Запрос на обновление токена
+        const response = await axios.post(`${API_URL}/api/v1/auth/refresh`, {
+          refresh_token: refreshToken,
+        });
+
+        const { access_token, refresh_token, expires_at } = response.data;
+
+        // Сохраняем новые токены
+        tokenStorage.setTokens(access_token, refresh_token, expires_at);
+
+        // Обновляем заголовок в оригинальном запросе
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        }
+
+        // Обрабатываем все запросы из очереди
+        processQueue(null, access_token);
+
+        // Повторяем оригинальный запрос с новым токеном
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        // Refresh токен невалиден или истёк
+        console.error("Refresh token failed:", refreshError);
+
+        tokenStorage.clearTokens();
+        processQueue(refreshError, null);
+        window.location.href = "/login";
+
+        window.showGlobalError?.({
+          statusCode: 401,
+          message: "Сессия истекла. Пожалуйста, войдите заново.",
+          variant: "warning",
+        });
+
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    // ====================== ОБРАБОТКА ДРУГИХ ОШИБОК ======================
+    // Показываем глобальную ошибку для всех остальных случаев
+    if (window.showGlobalError) {
       window.showGlobalError({
         statusCode,
         message,
         variant: statusCode >= 500 ? "error" : "warning",
       });
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
+    } else {
+      console.warn(
+        "window.showGlobalError не зарегистрирован. Ошибка:",
+        statusCode,
+        message,
+      );
     }
+
+    return Promise.reject(error);
   },
 );
