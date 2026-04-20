@@ -91,11 +91,29 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// ==== Флаг для предотвращения множественных refresh запросов ====
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((promise) => {
+    if (error) {
+      promise.reject(error);
+    } else if (token && promise.config.headers) {
+      promise.config.headers.Authorization = `Bearer ${token}`;
+      promise.resolve(api(promise.config));
+    } else {
+      promise.reject(new Error("No token provided"));
+    }
+  });
+  failedQueue = [];
+};
+
 apiClient.interceptors.response.use(
   (response) => response, // успешные ответы пропускаем без изменений
 
   async (error) => {
-    console.log(error.response.data)
+    console.log(error.response.data);
     const statusCode = error.response?.status || 500;
     let message = "Неизвестная ошибка сервера";
 
@@ -113,31 +131,73 @@ apiClient.interceptors.response.use(
         });
         return Promise.reject(error);
       }
+    }
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject, config: originalRequest });
+      });
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    const refreshToken = tokenStorage.getRefreshToken();
+
+    if (!refreshToken) {
       tokenStorage.clearTokens();
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
+
+    try {
+      // Запрос на обновление токена
+      const response = await axios.post(`${API_URL}/api/v1/auth/refresh`, {
+        refresh_token: refreshToken,
+      });
+
+      const { access_token, refresh_token, expires_at } = response.data;
+
+      // Сохраняем новые токены
+      tokenStorage.setTokens(access_token, refresh_token, expires_at);
+
+      // Обновляем заголовок для текущего запроса
+      if (originalRequest.headers) {
+        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+      }
+
+      if (window.showGlobalError) {
+        window.showGlobalError({
+          statusCode,
+          message,
+          variant: statusCode >= 500 ? "error" : "warning",
+        });
+      } else {
+        console.warn(
+          "window.showGlobalError не зарегистрирован. Ошибка:",
+          statusCode,
+          message,
+        );
+      }
+
+      // Обрабатываем все запросы, которые ждали обновления
+      processQueue(null, access_token);
+
+      // Повторяем оригинальный запрос
+      return api(originalRequest);
+    } catch (refreshError) {
+      console.error("Refresh token failed:", refreshError);
+      tokenStorage.clearTokens();
+      processQueue(refreshError, null);
       window.location.href = "/login";
       window.showGlobalError({
         statusCode,
         message,
         variant: statusCode >= 500 ? "error" : "warning",
       });
-      return Promise.reject(error);
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
     }
-
-    // Показываем тост об ошибке
-    if (window.showGlobalError) {
-      window.showGlobalError({
-        statusCode,
-        message,
-        variant: statusCode >= 500 ? "error" : "warning",
-      });
-    } else {
-      console.warn(
-        "window.showGlobalError не зарегистрирован. Ошибка:",
-        statusCode,
-        message,
-      );
-    }
-
-    return Promise.reject(error);
   },
 );
