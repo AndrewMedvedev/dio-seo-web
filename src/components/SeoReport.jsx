@@ -80,6 +80,14 @@ export default function SeoReport({ content }) {
     return "text-red-400";
   };
 
+  const getReadabilityColor = (lcp) => {
+    const ms = normalizeToMs(lcp);
+    if (ms === null) return "text-neutral-400";
+    if (ms >= 65) return "text-emerald-400";
+    if (40 <= ms <= 64) return "text-yellow-400";
+    return "text-red-400";
+  };
+
   // Группировка заголовков по тегам
   const headersData = analyzeMd.headers || [];
   const groupedHeaders = headersData.reduce((acc, header) => {
@@ -350,7 +358,7 @@ export default function SeoReport({ content }) {
                 </div>
                 {metadata.issues && metadata.issues.length > 0 && (
                   <div>
-                    <div className="text-red-400 text-xs mb-3">
+                    <div className="text-red-400 text-base mb-3">
                       ПРОБЛЕМЫ МЕТА-ТЕГОВ
                     </div>
                     <div className="space-y-2">
@@ -574,7 +582,9 @@ export default function SeoReport({ content }) {
                 <div className="text-neutral-500 text-xs">
                   Индекс читабельности
                 </div>
-                <div className="text-3xl font-semibold mt-3 text-emerald-400">
+                <div
+                  className={`text-3xl font-semibold mt-3 ${getReadabilityColor(analyzeMd.readability?.readability_score)}`}
+                >
                   {analyzeMd.readability?.readability_score || "—"}
                 </div>
               </div>
@@ -583,7 +593,7 @@ export default function SeoReport({ content }) {
             {/* Issues читабельности (добавлено) */}
             {readabilityIssues.length > 0 && (
               <div className="mt-6 bg-dark-800 border border-neutral-800 rounded-3xl p-8">
-                <div className="text-red-400 text-sm mb-4">
+                <div className="text-red-400 text-base mb-4">
                   Проблемы читабельности:
                 </div>
                 <ul className="space-y-2 text-neutral-300">
