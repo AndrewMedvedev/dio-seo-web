@@ -19,6 +19,69 @@ import GenerateResultPanel from "../components/smm/GenerateResultPanel";
 
 const HISTORY_PAGE_LIMIT = 10;
 
+const getHistoryItemStableKey = (item, fallbackPrefix, fallbackIndex = 0) => {
+  const stableId = item?.id ?? item?.history_id ?? item?.created_at;
+
+  if (stableId != null && stableId !== "") {
+    return String(stableId);
+  }
+
+  return `${fallbackPrefix}-${fallbackIndex}`;
+};
+
+const mergeUniqueHistoryItems = (existingItems, incomingItems, fallbackPrefix) => {
+  const seen = new Set();
+  const merged = [];
+
+  const pushUnique = (item, index) => {
+    const key = getHistoryItemStableKey(item, fallbackPrefix, index);
+    if (seen.has(key)) return false;
+
+    seen.add(key);
+    merged.push(item);
+    return true;
+  };
+
+  existingItems.forEach((item, index) => {
+    pushUnique(item, index);
+  });
+
+  let addedCount = 0;
+  incomingItems.forEach((item, index) => {
+    const added = pushUnique(item, existingItems.length + index);
+    if (added) {
+      addedCount += 1;
+    }
+  });
+
+  return {
+    items: merged,
+    addedCount,
+  };
+};
+
+const resolveHistoryHasMore = ({
+  next,
+  totalCount,
+  uniqueItemsLength,
+  incomingRawLength,
+  addedCount,
+  isLoadMore,
+}) => {
+  if (Boolean(next)) return true;
+
+  const parsedTotalCount = Number(totalCount);
+  if (Number.isFinite(parsedTotalCount) && parsedTotalCount >= 0) {
+    return uniqueItemsLength < parsedTotalCount;
+  }
+
+  if (isLoadMore && addedCount === 0) {
+    return false;
+  }
+
+  return incomingRawLength === HISTORY_PAGE_LIMIT;
+};
+
 const isConnectionErrorMessage = (message = "") =>
   ["ERR_CONNECTION_REFUSED", "Network Error", "Failed to fetch", "fetch"].some(
     (token) => message.includes(token),
@@ -624,13 +687,38 @@ export default function SmmPage() {
       const newItems = data?.results || [];
 
       if (isLoadMore) {
-        setHistoryData((prev) => [...prev, ...newItems]);
+        setHistoryData((prev) => {
+          const merged = mergeUniqueHistoryItems(prev, newItems, "analyze-history");
+
+          setHasMore(
+            resolveHistoryHasMore({
+              next: data?.next,
+              totalCount: data?.count,
+              uniqueItemsLength: merged.items.length,
+              incomingRawLength: newItems.length,
+              addedCount: merged.addedCount,
+              isLoadMore: true,
+            }),
+          );
+
+          return merged.items;
+        });
       } else {
-        setHistoryData(newItems);
+        const merged = mergeUniqueHistoryItems([], newItems, "analyze-history");
+        setHistoryData(merged.items);
+        setHasMore(
+          resolveHistoryHasMore({
+            next: data?.next,
+            totalCount: data?.count,
+            uniqueItemsLength: merged.items.length,
+            incomingRawLength: newItems.length,
+            addedCount: merged.addedCount,
+            isLoadMore: false,
+          }),
+        );
       }
 
       setCurrentPage(page);
-      setHasMore(Boolean(data?.next) || newItems.length === HISTORY_PAGE_LIMIT);
       setHistoryUsingMock(false);
     } catch (error) {
       const message = error?.message || "";
@@ -769,13 +857,38 @@ export default function SmmPage() {
       const newItems = data?.results || [];
 
       if (isLoadMore) {
-        setGenerateHistoryData((prev) => [...prev, ...newItems]);
+        setGenerateHistoryData((prev) => {
+          const merged = mergeUniqueHistoryItems(prev, newItems, "generate-history");
+
+          setGenerateHistoryHasMore(
+            resolveHistoryHasMore({
+              next: data?.next,
+              totalCount: data?.count,
+              uniqueItemsLength: merged.items.length,
+              incomingRawLength: newItems.length,
+              addedCount: merged.addedCount,
+              isLoadMore: true,
+            }),
+          );
+
+          return merged.items;
+        });
       } else {
-        setGenerateHistoryData(newItems);
+        const merged = mergeUniqueHistoryItems([], newItems, "generate-history");
+        setGenerateHistoryData(merged.items);
+        setGenerateHistoryHasMore(
+          resolveHistoryHasMore({
+            next: data?.next,
+            totalCount: data?.count,
+            uniqueItemsLength: merged.items.length,
+            incomingRawLength: newItems.length,
+            addedCount: merged.addedCount,
+            isLoadMore: false,
+          }),
+        );
       }
 
       setGenerateHistoryPage(page);
-      setGenerateHistoryHasMore(Boolean(data?.next) || newItems.length === HISTORY_PAGE_LIMIT);
       setGenerateHistoryUsingMock(false);
     } catch (error) {
       const message = error?.message || "";
