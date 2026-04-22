@@ -156,7 +156,7 @@ export default function SeoReport({ content }) {
         <div>
           <h3 className="text-xl font-semibold mb-6 flex items-center gap-4">
             <BarChart3 className="w-7 h-7 text-violet-400" />
-            SEO Summary
+            Краткое содержание
           </h3>
           <div className="bg-dark-800 border border-neutral-800 rounded-3xl p-8 md:p-10">
             <p className="text-base leading-relaxed text-neutral-300 wrap-break-word">
